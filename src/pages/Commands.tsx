@@ -80,62 +80,64 @@ export function Commands() {
             No commands yet. Add one or import from StreamElements in Settings.
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Command</th>
-                <th>Response</th>
-                <th>Media</th>
-                <th>Who</th>
-                <th>On</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((c) => (
-                <tr key={c.id}>
-                  <td>
-                    <strong>!{c.name}</strong>
-                  </td>
-                  <td>{c.response || "—"}</td>
-                  <td>{mediaLabel(c.mediaId) ?? "—"}</td>
-                  <td>{c.permission}</td>
-                  <td>
-                    <Toggle
-                      checked={c.enabled}
-                      label={`Toggle !${c.name}`}
-                      onChange={(enabled) => toggleEnabled(c, enabled)}
-                    />
-                  </td>
-                  <td>
-                    <div className="btn-row">
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => setEdit(c)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => setEdit(copyFrom(c))}
-                      >
-                        Copy
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={async () => {
-                          await api.deleteCommand(c.id);
-                          load();
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="col-short">Command</th>
+                  <th>Response</th>
+                  <th className="col-media">Media</th>
+                  <th className="col-short">Who</th>
+                  <th className="col-check">On</th>
+                  <th className="col-actions"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((c) => (
+                  <tr key={c.id}>
+                    <td>
+                      <strong>!{c.name}</strong>
+                    </td>
+                    <td>{c.response || "—"}</td>
+                    <td>{mediaLabel(c.mediaId) ?? "—"}</td>
+                    <td>{c.permission}</td>
+                    <td>
+                      <Toggle
+                        checked={c.enabled}
+                        label={`Toggle !${c.name}`}
+                        onChange={(enabled) => toggleEnabled(c, enabled)}
+                      />
+                    </td>
+                    <td className="col-actions">
+                      <div className="btn-row">
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => setEdit(c)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => setEdit(copyFrom(c))}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={async () => {
+                            await api.deleteCommand(c.id);
+                            load();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

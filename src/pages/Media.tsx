@@ -107,62 +107,64 @@ export function Media() {
             to a command or automation.
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Duration</th>
-                <th>Volume</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((m) => (
-                <tr key={m.id}>
-                  <td>
-                    <strong>{m.name}</strong>
-                  </td>
-                  <td>
-                    <span className="badge">{m.mediaType}</span>
-                  </td>
-                  <td>{(m.durationMs / 1000).toFixed(1)}s</td>
-                  <td>{m.volume}%</td>
-                  <td>
-                    <div className="btn-row">
-                      <button
-                        className="btn btn-ghost"
-                        onClick={async () => {
-                          try {
-                            await api.testMedia(m.id);
-                          } catch (e) {
-                            setErr(String(e));
-                          }
-                        }}
-                      >
-                        Test
-                      </button>
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => setEdit(m)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={async () => {
-                          await api.deleteMedia(m.id);
-                          load();
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th className="col-short">Type</th>
+                  <th className="col-short">Duration</th>
+                  <th className="col-short">Volume</th>
+                  <th className="col-actions"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((m) => (
+                  <tr key={m.id}>
+                    <td>
+                      <strong>{m.name}</strong>
+                    </td>
+                    <td>
+                      <span className="badge">{m.mediaType}</span>
+                    </td>
+                    <td>{(m.durationMs / 1000).toFixed(1)}s</td>
+                    <td>{m.volume}%</td>
+                    <td className="col-actions">
+                      <div className="btn-row">
+                        <button
+                          className="btn btn-ghost"
+                          onClick={async () => {
+                            try {
+                              await api.testMedia(m.id);
+                            } catch (e) {
+                              setErr(String(e));
+                            }
+                          }}
+                        >
+                          Test
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => setEdit(m)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={async () => {
+                            await api.deleteMedia(m.id);
+                            load();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

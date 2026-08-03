@@ -123,41 +123,43 @@ export function Giveaways() {
             No winners yet. Draw a giveaway to start tracking them here.
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Giveaway</th>
-                <th>Entries</th>
-                <th>Winners</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((h) => (
-                <tr key={h.runId}>
-                  <td>{formatWhen(h.startedAt)}</td>
-                  <td>
-                    <strong>{h.title}</strong>
-                    <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-                      {h.prize || "No prize label"}
-                    </div>
-                  </td>
-                  <td>{h.entryCount}</td>
-                  <td>
-                    {h.winners.map((w) => (
-                      <span
-                        key={w.userId}
-                        className="badge on"
-                        style={{ marginRight: 6 }}
-                      >
-                        @{w.login}
-                      </span>
-                    ))}
-                  </td>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Giveaway</th>
+                  <th className="col-short">Entries</th>
+                  <th>Winners</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={h.runId}>
+                    <td>{formatWhen(h.startedAt)}</td>
+                    <td>
+                      <strong>{h.title}</strong>
+                      <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+                        {h.prize || "No prize label"}
+                      </div>
+                    </td>
+                    <td>{h.entryCount}</td>
+                    <td>
+                      {h.winners.map((w) => (
+                        <span
+                          key={w.userId}
+                          className="badge on"
+                          style={{ marginRight: 6 }}
+                        >
+                          @{w.login}
+                        </span>
+                      ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -165,67 +167,69 @@ export function Giveaways() {
         {items.length === 0 ? (
           <div className="empty">Create a giveaway to get started.</div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Enter</th>
-                <th>Draw</th>
-                <th>Duration</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((g) => (
-                <tr key={g.id}>
-                  <td>
-                    <strong>{g.title}</strong>
-                    <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-                      {g.prize || "No prize label"}
-                    </div>
-                  </td>
-                  <td>
-                    <code>{g.entryCommand}</code>
-                  </td>
-                  <td>
-                    <code>{g.drawCommand}</code>
-                  </td>
-                  <td>{g.durationMins ? `${g.durationMins} min` : "Manual"}</td>
-                  <td>
-                    <div className="btn-row">
-                      <button
-                        className="btn btn-accent"
-                        onClick={async () => {
-                          await api.startGiveaway(g.id);
-                          load();
-                        }}
-                      >
-                        Start
-                      </button>
-                      <button className="btn btn-ghost" onClick={() => setEdit(g)}>
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => setEdit(copyFrom(g))}
-                      >
-                        Copy
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={async () => {
-                          await api.deleteGiveaway(g.id);
-                          load();
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th className="col-short">Enter</th>
+                  <th className="col-short">Draw</th>
+                  <th className="col-short">Duration</th>
+                  <th className="col-actions"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((g) => (
+                  <tr key={g.id}>
+                    <td>
+                      <strong>{g.title}</strong>
+                      <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+                        {g.prize || "No prize label"}
+                      </div>
+                    </td>
+                    <td>
+                      <code>{g.entryCommand}</code>
+                    </td>
+                    <td>
+                      <code>{g.drawCommand}</code>
+                    </td>
+                    <td>{g.durationMins ? `${g.durationMins} min` : "Manual"}</td>
+                    <td className="col-actions">
+                      <div className="btn-row">
+                        <button
+                          className="btn btn-accent"
+                          onClick={async () => {
+                            await api.startGiveaway(g.id);
+                            load();
+                          }}
+                        >
+                          Start
+                        </button>
+                        <button className="btn btn-ghost" onClick={() => setEdit(g)}>
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => setEdit(copyFrom(g))}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={async () => {
+                            await api.deleteGiveaway(g.id);
+                            load();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

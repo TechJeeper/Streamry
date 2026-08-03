@@ -2,6 +2,7 @@ import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
+import { CollapsiblePanel } from "../components/CollapsiblePanel";
 import type { SePreview } from "../types";
 
 const EXPORT_STREAM = "https://export.stream/";
@@ -53,26 +54,20 @@ export function SeImportPanel() {
   }
 
   return (
-    <div className="panel" style={{ marginTop: 16 }}>
-      <div className="page-head" style={{ marginBottom: 12 }}>
-        <div>
-          <h3 style={{ marginTop: 0, marginBottom: 6 }}>StreamElements Import</h3>
-          <p style={{ margin: 0, color: "var(--muted)" }}>
-            Import commands, timers, variables, and chat-alert automations from an
-            export.stream ZIP.
-          </p>
-        </div>
-        <div className="btn-row">
-          <button
-            className="btn btn-ghost"
-            onClick={() => openUrl(EXPORT_STREAM)}
-          >
-            Open export.stream
-          </button>
-          <button className="btn btn-primary" onClick={pick}>
-            Choose ZIP
-          </button>
-        </div>
+    <CollapsiblePanel
+      title="StreamElements Import"
+      blurb="Import commands, timers, variables, and chat-alert automations from an export.stream ZIP."
+    >
+      <div className="btn-row" style={{ marginBottom: 12 }}>
+        <button
+          className="btn btn-ghost"
+          onClick={() => openUrl(EXPORT_STREAM)}
+        >
+          Open export.stream
+        </button>
+        <button className="btn btn-primary" onClick={pick}>
+          Choose ZIP
+        </button>
       </div>
 
       {err && <p style={{ color: "var(--danger)" }}>{err}</p>}
@@ -319,6 +314,6 @@ export function SeImportPanel() {
           </div>
         </>
       )}
-    </div>
+    </CollapsiblePanel>
   );
 }

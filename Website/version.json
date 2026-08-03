@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "Commands/timers/giveaways copy, Settings reset, and in-app update checks."
+  "notes": "App icon, responsive tables, collapsible Settings sections, copy/reset/update checks."
 }

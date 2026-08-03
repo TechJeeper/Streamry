@@ -40,41 +40,43 @@ export function Variables() {
             No variables yet. Add one or import from StreamElements in Settings.
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Value</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((v) => (
-                <tr key={v.id}>
-                  <td>
-                    <strong>${`{${v.name}}`}</strong>
-                  </td>
-                  <td>{v.value}</td>
-                  <td>
-                    <div className="btn-row">
-                      <button className="btn btn-ghost" onClick={() => setEdit(v)}>
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={async () => {
-                          await api.deleteVariable(v.id);
-                          load();
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="col-short">Name</th>
+                  <th>Value</th>
+                  <th className="col-actions"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((v) => (
+                  <tr key={v.id}>
+                    <td>
+                      <strong>${`{${v.name}}`}</strong>
+                    </td>
+                    <td>{v.value}</td>
+                    <td className="col-actions">
+                      <div className="btn-row">
+                        <button className="btn btn-ghost" onClick={() => setEdit(v)}>
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={async () => {
+                            await api.deleteVariable(v.id);
+                            load();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

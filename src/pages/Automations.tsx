@@ -72,46 +72,48 @@ export function Automations() {
         {items.length === 0 ? (
           <div className="empty">No automations yet.</div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>When</th>
-                <th>Then</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <strong>{a.name}</strong>{" "}
-                    <span className={`badge ${a.enabled ? "on" : "off"}`}>
-                      {a.enabled ? "On" : "Off"}
-                    </span>
-                  </td>
-                  <td>{a.triggerType}</td>
-                  <td>{actionLabel(a)}</td>
-                  <td>
-                    <div className="btn-row">
-                      <button className="btn btn-ghost" onClick={() => setEdit(a)}>
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={async () => {
-                          await api.deleteAutomation(a.id);
-                          load();
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th className="col-short">When</th>
+                  <th>Then</th>
+                  <th className="col-actions"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <strong>{a.name}</strong>{" "}
+                      <span className={`badge ${a.enabled ? "on" : "off"}`}>
+                        {a.enabled ? "On" : "Off"}
+                      </span>
+                    </td>
+                    <td>{a.triggerType}</td>
+                    <td>{actionLabel(a)}</td>
+                    <td className="col-actions">
+                      <div className="btn-row">
+                        <button className="btn btn-ghost" onClick={() => setEdit(a)}>
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={async () => {
+                            await api.deleteAutomation(a.id);
+                            load();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

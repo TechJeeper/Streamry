@@ -4,6 +4,7 @@ import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
+import { CollapsiblePanel } from "../components/CollapsiblePanel";
 import { applyTheme } from "../theme";
 import type { AppSettings, DeviceCode, UpdateCheck } from "../types";
 import { SeImportPanel } from "./SeImportPanel";
@@ -346,12 +347,10 @@ export function Settings() {
 
       <SeImportPanel />
 
-      <div className="panel" style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Backup & restore</h3>
-        <p style={{ color: "var(--muted)" }}>
-          Exports commands, timers, giveaways, automations, and variables (not
-          login tokens).
-        </p>
+      <CollapsiblePanel
+        title="Backup & restore"
+        blurb="Exports commands, timers, giveaways, automations, and variables (not login tokens)."
+      >
         <div className="btn-row">
           <button
             className="btn btn-accent"
@@ -401,15 +400,12 @@ export function Settings() {
             Restore…
           </button>
         </div>
-      </div>
+      </CollapsiblePanel>
 
-      <div className="panel" style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Reset</h3>
-        <p style={{ color: "var(--muted)" }}>
-          Erase all Streamry data on this computer — commands, timers,
-          giveaways, automations, variables, media, settings, and Twitch login.
-          You will go through setup again. This cannot be undone.
-        </p>
+      <CollapsiblePanel
+        title="Reset"
+        blurb="Erase all Streamry data on this computer and return to setup. This cannot be undone."
+      >
         <div className="btn-row">
           <button
             className="btn btn-danger"
@@ -421,7 +417,7 @@ export function Settings() {
             Reset Streamry…
           </button>
         </div>
-      </div>
+      </CollapsiblePanel>
 
       {resetStep > 0 && (
         <div

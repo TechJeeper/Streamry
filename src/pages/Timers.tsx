@@ -59,57 +59,59 @@ export function Timers() {
         {items.length === 0 ? (
           <div className="empty">No timers yet.</div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Every</th>
-                <th>Message</th>
-                <th>On</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((t) => (
-                <tr key={t.id}>
-                  <td>
-                    <strong>{t.name}</strong>
-                  </td>
-                  <td>{t.intervalMins} min</td>
-                  <td>{t.message}</td>
-                  <td>
-                    <Toggle
-                      checked={t.enabled}
-                      label={`Toggle ${t.name}`}
-                      onChange={(enabled) => toggleEnabled(t, enabled)}
-                    />
-                  </td>
-                  <td>
-                    <div className="btn-row">
-                      <button className="btn btn-ghost" onClick={() => setEdit(t)}>
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => setEdit(copyFrom(t))}
-                      >
-                        Copy
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={async () => {
-                          await api.deleteTimer(t.id);
-                          load();
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="col-short">Name</th>
+                  <th className="col-short">Every</th>
+                  <th>Message</th>
+                  <th className="col-check">On</th>
+                  <th className="col-actions"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      <strong>{t.name}</strong>
+                    </td>
+                    <td>{t.intervalMins} min</td>
+                    <td>{t.message}</td>
+                    <td>
+                      <Toggle
+                        checked={t.enabled}
+                        label={`Toggle ${t.name}`}
+                        onChange={(enabled) => toggleEnabled(t, enabled)}
+                      />
+                    </td>
+                    <td className="col-actions">
+                      <div className="btn-row">
+                        <button className="btn btn-ghost" onClick={() => setEdit(t)}>
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => setEdit(copyFrom(t))}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={async () => {
+                            await api.deleteTimer(t.id);
+                            load();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
