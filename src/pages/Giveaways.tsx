@@ -9,7 +9,7 @@ const blank = (): Giveaway => ({
   prize: "",
   entryCommand: "!enter",
   drawCommand: "!pickwinner",
-  durationMins: 5,
+  durationMins: null,
   winnerCount: 1,
   eligibility: "everyone",
   excludeMods: false,
@@ -18,6 +18,15 @@ const blank = (): Giveaway => ({
     "🎉 Congratulations ${winner}! You won ${prize}! (${entries} entered)",
   enabled: true,
 });
+
+function copyFrom(g: Giveaway): Giveaway {
+  return {
+    ...g,
+    id: "",
+    title: g.title.trim() ? `${g.title} (copy)` : "Giveaway (copy)",
+    enabled: true,
+  };
+}
 
 function formatWhen(iso: string) {
   try {
@@ -195,6 +204,12 @@ export function Giveaways() {
                       </button>
                       <button className="btn btn-ghost" onClick={() => setEdit(g)}>
                         Edit
+                      </button>
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => setEdit(copyFrom(g))}
+                      >
+                        Copy
                       </button>
                       <button
                         className="btn btn-danger"

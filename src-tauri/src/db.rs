@@ -517,6 +517,26 @@ pub fn delete_variable(conn: &Connection, id: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Wipe bot data and settings (login tokens are cleared separately).
+pub fn factory_reset(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        r#"
+        DELETE FROM giveaway_entries;
+        DELETE FROM giveaway_runs;
+        DELETE FROM giveaways;
+        DELETE FROM timer_state;
+        DELETE FROM timers;
+        DELETE FROM commands;
+        DELETE FROM automations;
+        DELETE FROM variables;
+        DELETE FROM media_clips;
+        DELETE FROM settings;
+        "#,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn normalize_var_name(s: &str) -> String {
     s.trim()
         .trim_start_matches("${")

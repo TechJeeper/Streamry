@@ -19,6 +19,7 @@ mod media;
 mod models;
 mod overlay;
 mod tray;
+mod updates;
 
 pub use models::*;
 
@@ -559,6 +560,66 @@ fn complete_setup(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_app_version() -> String {
+    updates::current_version()
+}
+
+#[tauri::command]
+async fn check_for_update(state: State<'_, AppState>) -> Result<updates::UpdateCheck, String> {
+    let dismissed = db::get_setting(&state.db.lock(), updates::DISMISSED_KEY)?.unwrap_or_default();
+    updates::fetch_latest(&dismissed).await
+}
+
+#[tauri::command]
+fn dismiss_update(state: State<'_, AppState>, version: String) -> Result<(), String> {
+    updates::dismiss(&state.db.lock(), &version)
+}
+
+#[tauri::command]
+fn reset_app(state: State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    // Stop live bot connection
+    {
+        let mut rt = state.runtime.lock();
+        rt.connected = false;
+        rt.connecting = false;
+        rt.bot_login = None;
+        rt.channel = None;
+        rt.last_error = None;
+        rt.chat_lines = 0;
+        rt.live = false;
+    }
+    if let Some(tx) = state.bot.lock().stop.take() {
+        let _ = tx.send(true);
+    }
+
+    // Close any active giveaway run
+    let _ = giveaway::stop_active(&state.db.lock());
+
+    // Remove imported media files from disk
+    {
+        let clips = db::list_media(&state.db.lock()).unwrap_or_default();
+        for clip in clips {
+            media::delete_file(&clip.file_name);
+        }
+        if let Ok(entries) = std::fs::read_dir(media::media_dir()) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    let _ = std::fs::remove_file(path);
+                }
+            }
+        }
+    }
+
+    auth::clear_tokens()?;
+    db::factory_reset(&state.db.lock())?;
+
+    let _ = app.emit("status-changed", state.runtime.lock().clone());
+    let _ = app.emit("app-reset", ());
+    Ok(())
+}
+
+#[tauri::command]
 async fn check_app_name(name: String) -> Result<auth::NameCheckResult, String> {
     auth::check_app_name_hint(&name).await
 }
@@ -722,6 +783,10 @@ pub fn run() {
             preview_backup,
             restore_backup,
             complete_setup,
+            get_app_version,
+            check_for_update,
+            dismiss_update,
+            reset_app,
             check_app_name,
         ])
         .run(tauri::generate_context!())

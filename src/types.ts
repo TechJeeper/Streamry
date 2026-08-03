@@ -138,3 +138,12 @@ export type ImportResult = {
   importedVariables: number;
   skipped: number;
 };
+
+export type UpdateCheck = {
+  currentVersion: string;
+  latestVersion: string;
+  updateAvailable: boolean;
+  dismissed: boolean;
+  downloadUrl: string;
+  notes?: string | null;
+};

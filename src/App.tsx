@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import { Shell } from "./components/Shell";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { Automations } from "./pages/Automations";
 import { Commands } from "./pages/Commands";
 import { Dashboard } from "./pages/Dashboard";
@@ -12,7 +13,7 @@ import { Setup } from "./pages/Setup";
 import { Timers } from "./pages/Timers";
 import { Variables } from "./pages/Variables";
 import { applyTheme, readCachedTheme } from "./theme";
-import type { RuntimeStatus } from "./types";
+import type { RuntimeStatus, UpdateCheck } from "./types";
 import "./styles.css";
 
 applyTheme(readCachedTheme());
@@ -21,6 +22,7 @@ function App() {
   const [ready, setReady] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
   const [status, setStatus] = useState<RuntimeStatus | null>(null);
+  const [startupUpdate, setStartupUpdate] = useState<UpdateCheck | null>(null);
 
   const refreshStatus = useCallback(() => {
     api.getStatus().then(setStatus).catch(() => {});
@@ -53,6 +55,36 @@ function App() {
       unsub.then((u) => u());
     };
   }, [ready, setupComplete, refreshStatus]);
+
+  useEffect(() => {
+    if (!ready || !setupComplete) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const check = await api.checkForUpdate();
+        if (cancelled || !check.updateAvailable || check.dismissed) {
+          return;
+        }
+        setStartupUpdate(check);
+      } catch {
+        /* offline / pages not ready — ignore on startup */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, setupComplete]);
+
+  async function dismissStartupUpdate() {
+    if (startupUpdate) {
+      try {
+        await api.dismissUpdate(startupUpdate.latestVersion);
+      } catch {
+        /* still close the prompt */
+      }
+    }
+    setStartupUpdate(null);
+  }
 
   if (!ready) {
     return (
@@ -97,6 +129,12 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>
+      {startupUpdate && (
+        <UpdatePrompt
+          update={startupUpdate}
+          onDismiss={dismissStartupUpdate}
+        />
+      )}
     </BrowserRouter>
   );
 }

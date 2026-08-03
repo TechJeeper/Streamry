@@ -5,7 +5,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
 import { applyTheme } from "../theme";
-import type { AppSettings, DeviceCode } from "../types";
+import type { AppSettings, DeviceCode, UpdateCheck } from "../types";
 import { SeImportPanel } from "./SeImportPanel";
 
 const SCOPES = [
@@ -23,6 +23,13 @@ export function Settings() {
   const [err, setErr] = useState("");
   const [device, setDevice] = useState<DeviceCode | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
+  const [resetStep, setResetStep] = useState<0 | 1 | 2>(0);
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [appVersion, setAppVersion] = useState("");
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheck | null>(null);
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState("");
 
   useEffect(() => {
     api.getSettings().then((s) => {
@@ -30,6 +37,13 @@ export function Settings() {
       applyTheme(s.theme || "dark");
     });
     isEnabled().then(setAutostart).catch(() => {});
+    api.getAppVersion().then(setAppVersion).catch(() => {});
+    api
+      .checkForUpdate()
+      .then((check) => {
+        if (check.updateAvailable) setUpdateInfo(check);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -93,7 +107,7 @@ export function Settings() {
       <div className="page-head">
         <div>
           <h1>Settings</h1>
-          <p>Twitch connection, startup, StreamElements import, and backups.</p>
+          <p>Twitch connection, startup, StreamElements import, backups, and reset.</p>
         </div>
       </div>
 
@@ -262,6 +276,71 @@ export function Settings() {
             running. Use Quit from the tray menu to exit. The bot connects
             automatically when Streamry starts.
           </p>
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid var(--line)",
+              margin: "18px 0 14px",
+            }}
+          />
+          <p style={{ margin: "0 0 10px", color: "var(--muted)", fontSize: "0.9rem" }}>
+            Version {appVersion || "…"}
+          </p>
+          {updateInfo?.updateAvailable ? (
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ margin: "0 0 8px", color: "var(--ok)" }}>
+                Update available: <strong>{updateInfo.latestVersion}</strong>
+              </p>
+              {updateInfo.notes && (
+                <p
+                  style={{
+                    margin: "0 0 10px",
+                    color: "var(--muted)",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {updateInfo.notes}
+                </p>
+              )}
+              <div className="btn-row">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => openUrl(updateInfo.downloadUrl)}
+                >
+                  Go to downloads
+                </button>
+              </div>
+            </div>
+          ) : (
+            updateMsg && (
+              <p style={{ margin: "0 0 10px", color: "var(--muted)", fontSize: "0.9rem" }}>
+                {updateMsg}
+              </p>
+            )
+          )}
+          <button
+            className="btn btn-ghost"
+            disabled={updateBusy}
+            onClick={async () => {
+              setUpdateBusy(true);
+              setUpdateMsg("");
+              setErr("");
+              try {
+                const check = await api.checkForUpdate();
+                setUpdateInfo(check);
+                if (!check.updateAvailable) {
+                  setUpdateMsg(`You’re up to date (${check.currentVersion}).`);
+                }
+              } catch (e) {
+                setErr(String(e));
+                setUpdateInfo(null);
+              } finally {
+                setUpdateBusy(false);
+              }
+            }}
+          >
+            {updateBusy ? "Checking…" : "Check for updates"}
+          </button>
         </div>
       </div>
 
@@ -323,6 +402,122 @@ export function Settings() {
           </button>
         </div>
       </div>
+
+      <div className="panel" style={{ marginTop: 16 }}>
+        <h3 style={{ marginTop: 0 }}>Reset</h3>
+        <p style={{ color: "var(--muted)" }}>
+          Erase all Streamry data on this computer — commands, timers,
+          giveaways, automations, variables, media, settings, and Twitch login.
+          You will go through setup again. This cannot be undone.
+        </p>
+        <div className="btn-row">
+          <button
+            className="btn btn-danger"
+            onClick={() => {
+              setResetConfirm("");
+              setResetStep(1);
+            }}
+          >
+            Reset Streamry…
+          </button>
+        </div>
+      </div>
+
+      {resetStep > 0 && (
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            if (!resetBusy) setResetStep(0);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            {resetStep === 1 ? (
+              <>
+                <h2>Reset Streamry?</h2>
+                <p style={{ color: "var(--muted)", marginTop: 0 }}>
+                  This permanently deletes local bot data and logs you out of
+                  Twitch. Export a backup first if you want to keep anything.
+                </p>
+                <ul
+                  style={{
+                    color: "var(--muted)",
+                    margin: "0 0 18px",
+                    paddingLeft: 18,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  <li>Commands, timers, giveaways, and winner history</li>
+                  <li>Automations, variables, and media clips</li>
+                  <li>App settings and Twitch connection</li>
+                </ul>
+                <div className="btn-row">
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => setResetStep(0)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => {
+                      setResetConfirm("");
+                      setResetStep(2);
+                    }}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Confirm reset</h2>
+                <p style={{ color: "var(--muted)", marginTop: 0 }}>
+                  Type <strong>RESET</strong> to confirm. This cannot be undone.
+                </p>
+                <div className="field">
+                  <label>Confirmation</label>
+                  <input
+                    value={resetConfirm}
+                    onChange={(e) => setResetConfirm(e.target.value)}
+                    placeholder="RESET"
+                    autoFocus
+                    disabled={resetBusy}
+                  />
+                </div>
+                <div className="btn-row">
+                  <button
+                    className="btn btn-ghost"
+                    disabled={resetBusy}
+                    onClick={() => setResetStep(0)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    disabled={
+                      resetBusy || resetConfirm.trim().toUpperCase() !== "RESET"
+                    }
+                    onClick={async () => {
+                      setResetBusy(true);
+                      setErr("");
+                      try {
+                        await api.resetApp();
+                        window.location.reload();
+                      } catch (e) {
+                        setErr(String(e));
+                        setResetBusy(false);
+                        setResetStep(0);
+                      }
+                    }}
+                  >
+                    {resetBusy ? "Resetting…" : "Erase everything"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

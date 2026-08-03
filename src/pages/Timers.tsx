@@ -13,6 +13,15 @@ const blank = (): ChatTimer => ({
   liveOnly: false,
 });
 
+function copyFrom(t: ChatTimer): ChatTimer {
+  return {
+    ...t,
+    id: "",
+    name: t.name.trim() ? `${t.name} (copy)` : "Timer (copy)",
+    enabled: true,
+  };
+}
+
 export function Timers() {
   const [items, setItems] = useState<ChatTimer[]>([]);
   const [edit, setEdit] = useState<ChatTimer | null>(null);
@@ -79,6 +88,12 @@ export function Timers() {
                     <div className="btn-row">
                       <button className="btn btn-ghost" onClick={() => setEdit(t)}>
                         Edit
+                      </button>
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => setEdit(copyFrom(t))}
+                      >
+                        Copy
                       </button>
                       <button
                         className="btn btn-danger"

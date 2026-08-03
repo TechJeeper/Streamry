@@ -14,6 +14,7 @@ import type {
   OverlayInfo,
   RuntimeStatus,
   SePreview,
+  UpdateCheck,
 } from "./types";
 
 export const api = {
@@ -94,6 +95,10 @@ export const api = {
     replace: boolean;
   }) => invoke("restore_backup", args),
   completeSetup: () => invoke("complete_setup"),
+  getAppVersion: () => invoke<string>("get_app_version"),
+  checkForUpdate: () => invoke<UpdateCheck>("check_for_update"),
+  dismissUpdate: (version: string) => invoke("dismiss_update", { version }),
+  resetApp: () => invoke("reset_app"),
   checkAppName: (name: string) =>
     invoke<{
       ok: boolean;

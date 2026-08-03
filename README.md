@@ -20,6 +20,7 @@ Or use the [downloads page](https://techjeeper.github.io/Streamry/downloads.html
 - Chat commands, timers, giveaways (CSPRNG winner draws), event automations
 - Import commands/timers from StreamElements export ZIPs
 - Minimize to tray, start on boot, backup/restore (`.streamry`)
+- Checks [Website/version.json](Website/version.json) for updates on launch
 
 ## Requirements (build from source)
 

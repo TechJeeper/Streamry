@@ -16,6 +16,15 @@ const blank = (): ChatCommand => ({
   mediaId: null,
 });
 
+function copyFrom(c: ChatCommand): ChatCommand {
+  return {
+    ...c,
+    id: "",
+    name: c.name.trim() ? `${c.name}_copy` : "",
+    enabled: true,
+  };
+}
+
 export function Commands() {
   const [items, setItems] = useState<ChatCommand[]>([]);
   const [media, setMedia] = useState<MediaClip[]>([]);
@@ -105,6 +114,12 @@ export function Commands() {
                         onClick={() => setEdit(c)}
                       >
                         Edit
+                      </button>
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => setEdit(copyFrom(c))}
+                      >
+                        Copy
                       </button>
                       <button
                         className="btn btn-danger"
