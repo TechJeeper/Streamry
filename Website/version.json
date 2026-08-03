@@ -1,5 +1,5 @@
 {
-  "version": "0.1.2",
+  "version": "0.1.3",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "16×9 overlay placement grid, chromakey for images/video, dashboard activity log, and video playback fixes."
+  "notes": "Overlay placement grid with multi-cell sizing, chromakey for image/video, dashboard activity log, and video playback fixes."
 }
