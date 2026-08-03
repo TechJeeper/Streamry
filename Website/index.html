@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Streamry — Local Twitch Bot for Commands, Timers &amp; Giveaways</title>
+    <meta
+      name="description"
+      content="Streamry is a local Twitch bot for commands, timers, giveaways, automations, and StreamElements import — private, fast, and under your control."
+    />
+    <meta
+      name="keywords"
+      content="Twitch bot, local Twitch bot, streamer bot, chat commands, Twitch giveaways, StreamElements import, desktop Twitch bot, Streamry"
+    />
+    <meta name="author" content="Streamry" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="theme-color" content="#0c1412" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="application-name" content="Streamry" />
+    <meta name="apple-mobile-web-app-title" content="Streamry" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="canonical" href="https://techjeeper.github.io/Streamry/" />
+    <link rel="icon" type="image/svg+xml" href="./assets/sentinel.svg" />
+    <link rel="apple-touch-icon" href="./assets/sentinel.svg" />
+    <link rel="manifest" href="./site.webmanifest" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Streamry" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://techjeeper.github.io/Streamry/" />
+    <meta
+      property="og:title"
+      content="Streamry — Local Twitch Bot for Commands, Timers &amp; Giveaways"
+    />
+    <meta
+      property="og:description"
+      content="Run chat commands, timers, giveaways, and automations on your machine. Private by default with StreamElements import."
+    />
+    <meta
+      property="og:image"
+      content="https://techjeeper.github.io/Streamry/assets/screens/dashboard.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="800" />
+    <meta
+      property="og:image:alt"
+      content="Streamry dashboard showing online status and live channel"
+    />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Streamry — Local Twitch Bot for Commands, Timers &amp; Giveaways"
+    />
+    <meta
+      name="twitter:description"
+      content="Run chat commands, timers, giveaways, and automations on your machine. Private by default with StreamElements import."
+    />
+    <meta
+      name="twitter:image"
+      content="https://techjeeper.github.io/Streamry/assets/screens/dashboard.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Streamry dashboard showing online status and live channel"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://techjeeper.github.io/Streamry/#website",
+            "url": "https://techjeeper.github.io/Streamry/",
+            "name": "Streamry",
+            "description": "Local Twitch bot for commands, timers, giveaways, and automations.",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://techjeeper.github.io/Streamry/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://techjeeper.github.io/Streamry/#organization",
+            "name": "Streamry",
+            "url": "https://techjeeper.github.io/Streamry/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://techjeeper.github.io/Streamry/assets/sentinel.svg"
+            },
+            "sameAs": ["https://github.com/TechJeeper/Streamry"]
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://techjeeper.github.io/Streamry/#app",
+            "name": "Streamry",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Windows, macOS",
+            "description": "A local Twitch bot for streamers — commands, timers, giveaways, automations, and StreamElements import.",
+            "url": "https://techjeeper.github.io/Streamry/",
+            "image": "https://techjeeper.github.io/Streamry/assets/screens/dashboard.png",
+            "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "author": { "@id": "https://techjeeper.github.io/Streamry/#organization" }
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://techjeeper.github.io/Streamry/#webpage",
+            "url": "https://techjeeper.github.io/Streamry/",
+            "name": "Streamry — Local Twitch Bot for Commands, Timers & Giveaways",
+            "isPartOf": { "@id": "https://techjeeper.github.io/Streamry/#website" },
+            "about": { "@id": "https://techjeeper.github.io/Streamry/#app" },
+            "description": "Streamry is a local Twitch bot for commands, timers, giveaways, automations, and StreamElements import — private, fast, and under your control.",
+            "inLanguage": "en",
+            "primaryImageOfPage": {
+              "@type": "ImageObject",
+              "url": "https://techjeeper.github.io/Streamry/assets/screens/dashboard.png"
+            }
+          }
+        ]
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header on-hero">
+      <a class="brand-link" href="./">
+        <img src="./assets/sentinel.svg" alt="" width="40" height="40" />
+        <span>Streamry</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#local">Why local</a>
+        <a class="nav-cta" href="./downloads.html">Download</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <h1 class="hero-brand">Streamry</h1>
+            <p class="hero-pronounce" aria-label="Pronounced Stream-uh-ree">
+              Stream-uh-ree
+            </p>
+            <p class="hero-line">
+              A local Twitch bot that keeps your commands, timers, and giveaways
+              on your machine.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="./downloads.html">Get the app</a>
+              <a class="btn btn-ghost" href="#features">See features</a>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="app-frame">
+              <img
+                src="./assets/screens/dashboard.png"
+                width="1280"
+                height="800"
+                alt="Streamry dashboard showing online status and live channel"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <p class="section-kicker">Features</p>
+        <h2>Everything you need to run chat — without a hosted bot.</h2>
+        <p class="section-lead">
+          Built for streamers who want control, fair giveaways, and a clean
+          desktop workspace.
+        </p>
+
+        <div class="feature-stack">
+          <article class="feature">
+            <div class="feature-index">01</div>
+            <div>
+              <h3>Commands &amp; timers</h3>
+              <p>
+                Create chat triggers and interval messages with permissions,
+                cooldowns, and one-click on/off toggles.
+              </p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="feature-index">02</div>
+            <div>
+              <h3>Fair giveaways</h3>
+              <p>
+                Entry commands, countdown draws, and cryptographically strong
+                winner selection — plus a winner history you can review later.
+              </p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="feature-index">03</div>
+            <div>
+              <h3>Automations &amp; variables</h3>
+              <p>
+                React to subs, raids, cheers, and go-live moments. Reuse custom
+                <code>${name}</code> variables across replies.
+              </p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="feature-index">04</div>
+            <div>
+              <h3>StreamElements import</h3>
+              <p>
+                Bring over commands, timers, and variables from an export.stream
+                ZIP in Settings — no retyping your whole bot config.
+              </p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="feature-index">05</div>
+            <div>
+              <h3>Always-ready desktop app</h3>
+              <p>
+                Device-code Twitch login, auto-connect on launch, tray minimize,
+                start on boot, and backup/restore for your setup.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="screens">
+        <p class="section-kicker">Inside the app</p>
+        <h2>Commands, timers, and giveaways in one place.</h2>
+        <p class="section-lead">
+          Real UI captures from Streamry — dark theme, tray-friendly, and
+          ready for stream night.
+        </p>
+        <div class="shot-grid">
+          <figure>
+            <img
+              src="./assets/screens/commands.png"
+              width="1280"
+              height="800"
+              alt="Commands page with on/off toggles"
+              loading="lazy"
+            />
+            <figcaption>Commands with quick on/off toggles</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="./assets/screens/timers.png"
+              width="1280"
+              height="800"
+              alt="Timers page"
+              loading="lazy"
+            />
+            <figcaption>Interval timers for chat reminders</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="./assets/screens/giveaways.png"
+              width="1280"
+              height="800"
+              alt="Giveaways and winner history"
+              loading="lazy"
+            />
+            <figcaption>Giveaways with tracked winners</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="./assets/screens/dashboard.png"
+              width="1280"
+              height="800"
+              alt="Dashboard overview"
+              loading="lazy"
+            />
+            <figcaption>Dashboard connection and live status</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="band" id="local">
+        <div class="section">
+          <p class="section-kicker" style="color: var(--accent-bright)">
+            Why local
+          </p>
+          <h2>Your bot. Your machine. Your rules.</h2>
+          <p class="section-lead">
+            Streamry runs beside OBS — not on someone else’s server.
+          </p>
+          <ul class="band-points">
+            <li>
+              <strong>Private by default</strong>
+              <span>Config stays on disk. No hosted bot account required.</span>
+            </li>
+            <li>
+              <strong>Fast &amp; offline-capable</strong>
+              <span>Respond from the app process itself once you’re connected.</span>
+            </li>
+            <li>
+              <strong>Streamer or bot login</strong>
+              <span>Use your channel account or a dedicated bot login.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="section-kicker">Download</p>
+        <h2>Get Streamry for Windows or macOS.</h2>
+        <p class="section-lead">
+          Installers are ready — grab the Windows setup EXE or the universal
+          macOS DMG from the downloads page.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-solid" href="./downloads.html">View downloads</a>
+          <a
+            class="btn btn-outline"
+            href="./downloads/Streamry_0.1.0_x64-setup.exe"
+            download
+            >Windows</a
+          >
+          <a
+            class="btn btn-outline"
+            href="./downloads/Streamry_0.1.0_universal.dmg"
+            download
+            >macOS</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span>© <span id="year"></span> Streamry</span>
+        <a href="./downloads.html">Downloads</a>
+      </div>
+    </footer>
+
+    <script src="./main.js"></script>
+  </body>
+</html>
