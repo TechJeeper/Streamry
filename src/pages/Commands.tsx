@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { Toggle } from "../components/Toggle";
+import { useOpenFromQuery } from "../hooks/useOpenFromQuery";
 import { ObsBrowserSourceBanner } from "./Media";
 import type { ChatCommand, MediaClip } from "../types";
 
@@ -41,6 +42,9 @@ export function Commands() {
   useEffect(() => {
     load();
   }, []);
+
+  const openEdit = useCallback((c: ChatCommand) => setEdit(c), []);
+  useOpenFromQuery(items, openEdit);
 
   async function toggleEnabled(cmd: ChatCommand, enabled: boolean) {
     const next = { ...cmd, enabled };

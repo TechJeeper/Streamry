@@ -263,6 +263,16 @@ pub fn handle_chat(app: &AppHandle, chat: &IncomingChat) -> Option<Option<String
             )
             .ok()?;
         let _ = app.emit("giveaway-updated", ());
+        if inserted > 0 {
+            crate::activity::push(
+                app,
+                "giveaway",
+                active.giveaway.title.clone(),
+                format!("{} entered", chat.display),
+                "/giveaways",
+                Some(active.giveaway.id.clone()),
+            );
+        }
         if inserted > 0 && active.giveaway.confirm_entry {
             return Some(Some(format!("@{} you're in! Good luck ✨", chat.display)));
         }
@@ -273,9 +283,24 @@ pub fn handle_chat(app: &AppHandle, chat: &IncomingChat) -> Option<Option<String
         if !(chat.is_mod || chat.is_broadcaster) {
             return Some(None);
         }
+        let title = active.giveaway.title.clone();
+        let gw_id = active.giveaway.id.clone();
         drop(db);
         match draw_winners(&state.db.lock()) {
             Ok(winners) if !winners.is_empty() => {
+                let names = winners
+                    .iter()
+                    .map(|w| format!("@{}", w.login))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                crate::activity::push(
+                    app,
+                    "giveaway",
+                    title,
+                    format!("Winner(s): {names}"),
+                    "/giveaways",
+                    Some(gw_id),
+                );
                 let announce = format_announce(&state.db.lock(), &winners).ok()?;
                 let _ = app.emit("giveaway-updated", ());
                 return Some(Some(announce));

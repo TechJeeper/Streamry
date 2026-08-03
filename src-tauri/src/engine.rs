@@ -78,9 +78,21 @@ pub fn handle_message(
     };
 
     // Optional OBS media clip
-    if let Some(media_id) = cmd.media_id.as_ref().filter(|s| !s.is_empty()) {
-        play_media_by_ref(app, media_id);
-    }
+    let media_note = if let Some(media_id) = cmd.media_id.as_ref().filter(|s| !s.is_empty()) {
+        let name = play_media_by_ref(app, media_id, false);
+        name.map(|n| format!(" · media {n}")).unwrap_or_default()
+    } else {
+        String::new()
+    };
+
+    crate::activity::push(
+        app,
+        "command",
+        format!("!{}", cmd.name),
+        format!("Triggered by {}{media_note}", chat.display),
+        "/commands",
+        Some(cmd.id.clone()),
+    );
 
     let response = cmd.response.trim();
     if response.is_empty() {
@@ -143,6 +155,24 @@ pub fn handle_usernotice(app: &AppHandle, event: &crate::chat::UserNoticeEvent) 
 }
 
 fn run_automation(app: &AppHandle, auto: &Automation, user: &str) {
+    let action_label = match auto.action_type.as_str() {
+        "chat" => "sent chat",
+        "enable_command" => "enabled command",
+        "disable_command" => "disabled command",
+        "enable_timer" => "enabled timer",
+        "disable_timer" => "disabled timer",
+        "play_media" => "played media",
+        other => other,
+    };
+    crate::activity::push(
+        app,
+        "automation",
+        auto.name.clone(),
+        format!("{action_label} · trigger {} · {user}", auto.trigger_type),
+        "/automations",
+        Some(auto.id.clone()),
+    );
+
     match auto.action_type.as_str() {
         "chat" => {
             let state = app.state::<AppState>();
@@ -192,13 +222,13 @@ fn run_automation(app: &AppHandle, auto: &Automation, user: &str) {
             }
         }
         "play_media" => {
-            play_media_by_ref(app, &auto.action_payload);
+            let _ = play_media_by_ref(app, &auto.action_payload, false);
         }
         _ => {}
     }
 }
 
-fn play_media_by_ref(app: &AppHandle, key: &str) {
+fn play_media_by_ref(app: &AppHandle, key: &str, log: bool) -> Option<String> {
     let state = app.state::<AppState>();
     let clip = {
         let db = state.db.lock();
@@ -209,6 +239,19 @@ fn play_media_by_ref(app: &AppHandle, key: &str) {
     };
     if let Some(clip) = clip {
         media_mod::play_clip(&state.overlay, &clip);
+        if log {
+            crate::activity::push(
+                app,
+                "media",
+                clip.name.clone(),
+                format!("Played {} on overlay", clip.media_type),
+                "/media",
+                Some(clip.id.clone()),
+            );
+        }
+        Some(clip.name)
+    } else {
+        None
     }
 }
 
@@ -233,6 +276,19 @@ pub async fn run_scheduler(app: AppHandle) {
                             };
                             if let Ok(winners) = draw_result {
                                 if !winners.is_empty() {
+                                    let names = winners
+                                        .iter()
+                                        .map(|w| format!("@{}", w.login))
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+                                    crate::activity::push(
+                                        &app,
+                                        "giveaway",
+                                        active.giveaway.title.clone(),
+                                        format!("Auto-drew winner(s): {names}"),
+                                        "/giveaways",
+                                        Some(active.giveaway.id.clone()),
+                                    );
                                     let announce = {
                                         let db = state.db.lock();
                                         giveaway::format_announce(&db, &winners).ok()
@@ -319,6 +375,14 @@ pub async fn run_scheduler(app: AppHandle) {
                 };
                 let msg = render_vars(&timer.message, &dummy, &channel, None, &custom_vars);
                 let _ = tx.send(ChatOutbound::Message(msg));
+                crate::activity::push(
+                    &app,
+                    "timer",
+                    timer.name.clone(),
+                    "Posted timer message to chat",
+                    "/timers",
+                    Some(timer.id.clone()),
+                );
             }
             let now = Utc::now().to_rfc3339();
             let _ = db.execute(

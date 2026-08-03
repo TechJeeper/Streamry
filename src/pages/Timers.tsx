@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { Toggle } from "../components/Toggle";
+import { useOpenFromQuery } from "../hooks/useOpenFromQuery";
 import type { ChatTimer } from "../types";
 
 const blank = (): ChatTimer => ({
@@ -32,6 +33,9 @@ export function Timers() {
   useEffect(() => {
     load();
   }, []);
+
+  const openEdit = useCallback((t: ChatTimer) => setEdit(t), []);
+  useOpenFromQuery(items, openEdit);
 
   async function toggleEnabled(timer: ChatTimer, enabled: boolean) {
     const next = { ...timer, enabled };

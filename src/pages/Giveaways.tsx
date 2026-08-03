@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api } from "../api";
+import { useOpenFromQuery } from "../hooks/useOpenFromQuery";
 import type { ActiveGiveaway, Giveaway, GiveawayRunHistory } from "../types";
 
 const blank = (): Giveaway => ({
@@ -61,6 +62,9 @@ export function Giveaways() {
       u.then((fn) => fn());
     };
   }, []);
+
+  const openEdit = useCallback((g: Giveaway) => setEdit(g), []);
+  useOpenFromQuery(items, openEdit);
 
   return (
     <>

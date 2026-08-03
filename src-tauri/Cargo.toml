@@ -1,6 +1,6 @@
 [package]
 name = "streamry"
-version = "0.1.1"
+version = "0.1.2"
 description = "Easy local Twitch bot for streamers — commands, timers, giveaways, and automations"
 authors = ["Streamry"]
 edition = "2021"

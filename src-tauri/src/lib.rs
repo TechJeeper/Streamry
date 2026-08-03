@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::mpsc;
 
+mod activity;
 mod auth;
 mod backup;
 mod chat;
@@ -311,12 +312,25 @@ fn disconnect_bot(state: State<'_, AppState>, app: AppHandle) -> Result<(), Stri
 }
 
 #[tauri::command]
-fn send_chat(state: State<'_, AppState>, message: String) -> Result<(), String> {
+fn send_chat(state: State<'_, AppState>, app: AppHandle, message: String) -> Result<(), String> {
+    let msg = message.trim().to_string();
+    if msg.is_empty() {
+        return Err("Message is empty".into());
+    }
     let tx = state.chat_tx.lock();
     tx.as_ref()
         .ok_or_else(|| "Bot is not connected.".to_string())?
-        .send(ChatOutbound::Message(message))
-        .map_err(|e| e.to_string())
+        .send(ChatOutbound::Message(msg.clone()))
+        .map_err(|e| e.to_string())?;
+    activity::push(
+        &app,
+        "chat",
+        "Bot message",
+        msg,
+        "/",
+        None,
+    );
+    Ok(())
 }
 
 // ---- Commands CRUD ----
@@ -383,19 +397,43 @@ fn list_giveaway_history(
 #[tauri::command]
 fn start_giveaway(state: State<'_, AppState>, app: AppHandle, id: String) -> Result<(), String> {
     giveaway::start(&state.db.lock(), &id)?;
+    let title = db::list_giveaways(&state.db.lock())
+        .ok()
+        .and_then(|list| list.into_iter().find(|g| g.id == id).map(|g| g.title))
+        .unwrap_or_else(|| "Giveaway".into());
+    activity::push(
+        &app,
+        "giveaway",
+        title,
+        "Started",
+        "/giveaways",
+        Some(id),
+    );
     let _ = app.emit("giveaway-updated", ());
     Ok(())
 }
 
 #[tauri::command]
 fn stop_giveaway(state: State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    let active = giveaway::get_active_view(&state.db.lock())?;
     giveaway::stop_active(&state.db.lock())?;
+    if let Some(a) = active {
+        activity::push(
+            &app,
+            "giveaway",
+            a.giveaway.title,
+            "Stopped",
+            "/giveaways",
+            Some(a.giveaway.id),
+        );
+    }
     let _ = app.emit("giveaway-updated", ());
     Ok(())
 }
 
 #[tauri::command]
 fn draw_giveaway(state: State<'_, AppState>, app: AppHandle) -> Result<Vec<GiveawayWinner>, String> {
+    let active = giveaway::get_active_view(&state.db.lock())?;
     let winners = giveaway::draw_winners(&state.db.lock())?;
     if !winners.is_empty() {
         let announce = {
@@ -404,6 +442,21 @@ fn draw_giveaway(state: State<'_, AppState>, app: AppHandle) -> Result<Vec<Givea
         };
         if let Some(tx) = state.chat_tx.lock().clone() {
             let _ = tx.send(ChatOutbound::Message(announce));
+        }
+        if let Some(a) = &active {
+            let names = winners
+                .iter()
+                .map(|w| format!("@{}", w.login))
+                .collect::<Vec<_>>()
+                .join(", ");
+            activity::push(
+                &app,
+                "giveaway",
+                a.giveaway.title.clone(),
+                format!("Winner(s): {names}"),
+                "/giveaways",
+                Some(a.giveaway.id.clone()),
+            );
         }
     }
     let _ = app.emit("giveaway-updated", ());
@@ -468,10 +521,18 @@ fn delete_media(state: State<'_, AppState>, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn test_media(state: State<'_, AppState>, id: String) -> Result<(), String> {
+fn test_media(state: State<'_, AppState>, app: AppHandle, id: String) -> Result<(), String> {
     let clip = db::get_media(&state.db.lock(), &id)?
         .ok_or_else(|| "Media clip not found".to_string())?;
     media::play_clip(&state.overlay, &clip);
+    activity::push(
+        &app,
+        "media",
+        clip.name.clone(),
+        format!("Test played {} on overlay", clip.media_type),
+        "/media",
+        Some(clip.id),
+    );
     Ok(())
 }
 

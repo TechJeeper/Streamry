@@ -1,7 +1,41 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
 import { api } from "../api";
-import type { ActiveGiveaway, RuntimeStatus } from "../types";
+import type { ActiveGiveaway, ActivityEntry, RuntimeStatus } from "../types";
+
+const MAX_ACTIVITY = 100;
+
+function formatTime(iso: string) {
+  try {
+    return new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function kindLabel(kind: string) {
+  switch (kind) {
+    case "command":
+      return "Command";
+    case "timer":
+      return "Timer";
+    case "automation":
+      return "Automation";
+    case "media":
+      return "Media";
+    case "giveaway":
+      return "Giveaway";
+    case "chat":
+      return "Chat";
+    default:
+      return kind;
+  }
+}
 
 export function Dashboard({
   status,
@@ -12,6 +46,7 @@ export function Dashboard({
 }) {
   const [active, setActive] = useState<ActiveGiveaway | null>(null);
   const [chat, setChat] = useState<{ user: string; message: string }[]>([]);
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
@@ -27,6 +62,9 @@ export function Dashboard({
         setChat((c) => [...c.slice(-40), e.payload]);
       }),
       listen("status-changed", () => refreshStatus()),
+      listen<ActivityEntry>("activity-log", (e) => {
+        setActivity((list) => [e.payload, ...list].slice(0, MAX_ACTIVITY));
+      }),
     ];
     return () => unsubs.forEach((p) => p.then((u) => u()));
   }, [refreshStatus]);
@@ -41,6 +79,8 @@ export function Dashboard({
       setErr(String(e));
     }
   }
+
+  const clearActivity = useCallback(() => setActivity([]), []);
 
   return (
     <>
@@ -148,6 +188,61 @@ export function Dashboard({
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="panel activity-panel">
+        <div className="activity-head">
+          <h3 style={{ margin: 0 }}>Activity</h3>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: "6px 10px", fontSize: "0.85rem" }}
+            onClick={clearActivity}
+            disabled={activity.length === 0}
+          >
+            Clear
+          </button>
+        </div>
+        <p className="field-hint" style={{ marginTop: 6 }}>
+          Live log of commands, timers, media, giveaways, and automations —
+          newest first.
+        </p>
+        {activity.length === 0 ? (
+          <div className="empty" style={{ marginTop: 12 }}>
+            Nothing yet. Triggers will show up here as they fire.
+          </div>
+        ) : (
+          <ul className="activity-list">
+            {activity.map((a) => {
+              const to = a.entityId
+                ? `${a.path}?id=${encodeURIComponent(a.entityId)}`
+                : a.path;
+              return (
+                <li key={a.id} className="activity-row">
+                  <time className="activity-time" dateTime={a.at}>
+                    {formatTime(a.at)}
+                  </time>
+                  <span className={`activity-kind kind-${a.kind}`}>
+                    {kindLabel(a.kind)}
+                  </span>
+                  <div className="activity-body">
+                    <strong className="activity-title">{a.title}</strong>
+                    {a.detail && (
+                      <span className="activity-detail">{a.detail}</span>
+                    )}
+                  </div>
+                  <Link
+                    className="btn btn-ghost activity-open"
+                    to={to}
+                    title={`Open ${kindLabel(a.kind)}`}
+                  >
+                    Open
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </>
   );

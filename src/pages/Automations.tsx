@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
+import { useOpenFromQuery } from "../hooks/useOpenFromQuery";
 import { ObsBrowserSourceBanner } from "./Media";
 import type { Automation, MediaClip } from "../types";
 
@@ -29,6 +30,9 @@ export function Automations() {
   useEffect(() => {
     load();
   }, []);
+
+  const openEdit = useCallback((a: Automation) => setEdit(a), []);
+  useOpenFromQuery(items, openEdit);
 
   function actionLabel(a: Automation) {
     if (a.actionType === "play_media") {

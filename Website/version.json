@@ -1,5 +1,5 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "App icon, responsive tables, collapsible Settings sections, copy/reset/update checks."
+  "notes": "16×9 overlay placement grid, chromakey for images/video, dashboard activity log, and video playback fixes."
 }

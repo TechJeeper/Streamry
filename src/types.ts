@@ -39,6 +39,25 @@ export type MediaClip = {
   fileName: string;
   durationMs: number;
   volume: number;
+  /** 16×9 overlay grid rect (0-based). */
+  overlayX?: number;
+  overlayY?: number;
+  overlayW?: number;
+  overlayH?: number;
+  alwaysShow?: boolean;
+  /** Hex `#RRGGBB` to key out; empty = off. */
+  chromaKey?: string;
+  chromaTolerance?: number;
+};
+
+export type ActivityEntry = {
+  id: string;
+  at: string;
+  kind: string;
+  title: string;
+  detail: string;
+  path: string;
+  entityId?: string | null;
 };
 
 export type OverlayInfo = {

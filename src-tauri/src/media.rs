@@ -71,6 +71,13 @@ pub fn import_file(source: &Path, name: Option<String>) -> Result<(MediaClip, Pa
         file_name,
         duration_ms: default_duration_ms(media_type),
         volume: 80,
+        overlay_x: crate::models::default_overlay_x(),
+        overlay_y: crate::models::default_overlay_y(),
+        overlay_w: crate::models::default_overlay_w(),
+        overlay_h: crate::models::default_overlay_h(),
+        always_show: false,
+        chroma_key: String::new(),
+        chroma_tolerance: crate::models::default_chroma_tolerance(),
     };
     Ok((clip, dest))
 }
@@ -86,6 +93,10 @@ pub fn delete_file(file_name: &str) {
 
 pub fn play_clip(hub: &OverlayHub, clip: &MediaClip) {
     let volume = (clip.volume as f64 / 100.0).clamp(0.0, 1.0);
+    let always_show = clip.always_show && clip.media_type == "image";
+    let chroma = matches!(clip.media_type.as_str(), "image" | "gif" | "video")
+        .then(|| clip.chroma_key.clone())
+        .unwrap_or_default();
     hub.publish(OverlayEvent {
         id: clip.id.clone(),
         name: clip.name.clone(),
@@ -93,5 +104,12 @@ pub fn play_clip(hub: &OverlayHub, clip: &MediaClip) {
         url: format!("/media/{}", clip.file_name),
         duration_ms: clip.duration_ms.max(500),
         volume,
+        grid_x: clip.overlay_x,
+        grid_y: clip.overlay_y,
+        grid_w: clip.overlay_w,
+        grid_h: clip.overlay_h,
+        always_show,
+        chroma_key: chroma,
+        chroma_tolerance: clip.chroma_tolerance.clamp(0, 120),
     });
 }

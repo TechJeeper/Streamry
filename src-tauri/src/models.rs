@@ -61,7 +61,45 @@ pub struct MediaClip {
     pub file_name: String,
     pub duration_ms: i64,
     pub volume: i64,
+    /// Grid placement on 16×9 overlay canvas (0-based).
+    #[serde(default = "default_overlay_x")]
+    pub overlay_x: i64,
+    #[serde(default = "default_overlay_y")]
+    pub overlay_y: i64,
+    #[serde(default = "default_overlay_w")]
+    pub overlay_w: i64,
+    #[serde(default = "default_overlay_h")]
+    pub overlay_h: i64,
+    /// Image-only: keep on overlay until replaced (ignores duration).
+    #[serde(default)]
+    pub always_show: bool,
+    /// Hex color `#RRGGBB` to key out (empty = off). Used for image/gif/video.
+    #[serde(default)]
+    pub chroma_key: String,
+    /// Color distance tolerance for chromakey (0–120).
+    #[serde(default = "default_chroma_tolerance")]
+    pub chroma_tolerance: i64,
 }
+
+pub fn default_overlay_x() -> i64 {
+    4
+}
+pub fn default_overlay_y() -> i64 {
+    2
+}
+pub fn default_overlay_w() -> i64 {
+    8
+}
+pub fn default_overlay_h() -> i64 {
+    5
+}
+
+pub fn default_chroma_tolerance() -> i64 {
+    64
+}
+
+pub const OVERLAY_GRID_W: i64 = 16;
+pub const OVERLAY_GRID_H: i64 = 9;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

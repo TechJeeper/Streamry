@@ -84,7 +84,15 @@ pub fn migrate(conn: &Connection) -> Result<(), String> {
             media_type TEXT NOT NULL,
             file_name TEXT NOT NULL,
             duration_ms INTEGER NOT NULL DEFAULT 5000,
-            volume INTEGER NOT NULL DEFAULT 80
+            volume INTEGER NOT NULL DEFAULT 80,
+            overlay_position TEXT NOT NULL DEFAULT 'center',
+            always_show INTEGER NOT NULL DEFAULT 0,
+            overlay_x INTEGER NOT NULL DEFAULT 4,
+            overlay_y INTEGER NOT NULL DEFAULT 2,
+            overlay_w INTEGER NOT NULL DEFAULT 8,
+            overlay_h INTEGER NOT NULL DEFAULT 5,
+            chroma_key TEXT NOT NULL DEFAULT '',
+            chroma_tolerance INTEGER NOT NULL DEFAULT 48
         );
         "#,
     )
@@ -92,6 +100,51 @@ pub fn migrate(conn: &Connection) -> Result<(), String> {
 
     // Additive migrations for existing installs
     let _ = conn.execute("ALTER TABLE commands ADD COLUMN media_id TEXT", []);
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN overlay_position TEXT NOT NULL DEFAULT 'center'",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN always_show INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN overlay_x INTEGER NOT NULL DEFAULT 4",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN overlay_y INTEGER NOT NULL DEFAULT 2",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN overlay_w INTEGER NOT NULL DEFAULT 8",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN overlay_h INTEGER NOT NULL DEFAULT 5",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN chroma_key TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE media_clips ADD COLUMN chroma_tolerance INTEGER NOT NULL DEFAULT 48",
+        [],
+    );
+    // One-time migrate named anchors → 16×9 grid rects (only when still on defaults)
+    let _ = conn.execute_batch(
+        r#"
+        UPDATE media_clips SET overlay_x=0,  overlay_y=0, overlay_w=5, overlay_h=3 WHERE overlay_position='top-left'    AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        UPDATE media_clips SET overlay_x=5,  overlay_y=0, overlay_w=6, overlay_h=3 WHERE overlay_position='top'         AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        UPDATE media_clips SET overlay_x=11, overlay_y=0, overlay_w=5, overlay_h=3 WHERE overlay_position='top-right'   AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        UPDATE media_clips SET overlay_x=0,  overlay_y=3, overlay_w=5, overlay_h=3 WHERE overlay_position='left'        AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        UPDATE media_clips SET overlay_x=11, overlay_y=3, overlay_w=5, overlay_h=3 WHERE overlay_position='right'       AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        UPDATE media_clips SET overlay_x=0,  overlay_y=6, overlay_w=5, overlay_h=3 WHERE overlay_position='bottom-left' AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        UPDATE media_clips SET overlay_x=5,  overlay_y=6, overlay_w=6, overlay_h=3 WHERE overlay_position='bottom'      AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        UPDATE media_clips SET overlay_x=11, overlay_y=6, overlay_w=5, overlay_h=3 WHERE overlay_position='bottom-right'AND overlay_x=4 AND overlay_y=2 AND overlay_w=8 AND overlay_h=5;
+        "#,
+    );
 
     Ok(())
 }
@@ -366,24 +419,61 @@ pub fn delete_automation(conn: &Connection, id: &str) -> Result<(), String> {
     Ok(())
 }
 
+const MEDIA_SELECT: &str = "SELECT id, name, media_type, file_name, duration_ms, volume,
+        COALESCE(always_show, 0),
+        COALESCE(overlay_x, 4), COALESCE(overlay_y, 2),
+        COALESCE(overlay_w, 8), COALESCE(overlay_h, 5),
+        COALESCE(chroma_key, ''), COALESCE(chroma_tolerance, 48)
+     FROM media_clips";
+
+fn row_to_media(r: &rusqlite::Row<'_>) -> rusqlite::Result<MediaClip> {
+    Ok(MediaClip {
+        id: r.get(0)?,
+        name: r.get(1)?,
+        media_type: r.get(2)?,
+        file_name: r.get(3)?,
+        duration_ms: r.get(4)?,
+        volume: r.get(5)?,
+        always_show: r.get::<_, i64>(6)? != 0,
+        overlay_x: r.get(7)?,
+        overlay_y: r.get(8)?,
+        overlay_w: r.get(9)?,
+        overlay_h: r.get(10)?,
+        chroma_key: r.get(11)?,
+        chroma_tolerance: r.get(12)?,
+    })
+}
+
+fn clamp_overlay_rect(clip: &mut MediaClip) {
+    use crate::models::{OVERLAY_GRID_H, OVERLAY_GRID_W};
+    clip.overlay_w = clip.overlay_w.clamp(1, OVERLAY_GRID_W);
+    clip.overlay_h = clip.overlay_h.clamp(1, OVERLAY_GRID_H);
+    clip.overlay_x = clip.overlay_x.clamp(0, OVERLAY_GRID_W - clip.overlay_w);
+    clip.overlay_y = clip.overlay_y.clamp(0, OVERLAY_GRID_H - clip.overlay_h);
+}
+
+fn normalize_chroma_key(s: &str) -> String {
+    let t = s.trim().trim_start_matches('#');
+    if t.len() == 6 && t.chars().all(|c| c.is_ascii_hexdigit()) {
+        return format!("#{}", t.to_ascii_uppercase());
+    }
+    if t.len() == 3 && t.chars().all(|c| c.is_ascii_hexdigit()) {
+        let b = t.as_bytes();
+        return format!(
+            "#{0}{0}{1}{1}{2}{2}",
+            b[0] as char, b[1] as char, b[2] as char
+        )
+        .to_ascii_uppercase();
+    }
+    String::new()
+}
+
 pub fn list_media(conn: &Connection) -> Result<Vec<MediaClip>, String> {
     let mut stmt = conn
-        .prepare(
-            "SELECT id, name, media_type, file_name, duration_ms, volume
-             FROM media_clips ORDER BY name COLLATE NOCASE",
-        )
+        .prepare(&format!("{MEDIA_SELECT} ORDER BY name COLLATE NOCASE"))
         .map_err(|e| e.to_string())?;
     let rows = stmt
-        .query_map([], |r| {
-            Ok(MediaClip {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                media_type: r.get(2)?,
-                file_name: r.get(3)?,
-                duration_ms: r.get(4)?,
-                volume: r.get(5)?,
-            })
-        })
+        .query_map([], row_to_media)
         .map_err(|e| e.to_string())?;
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())
@@ -391,18 +481,9 @@ pub fn list_media(conn: &Connection) -> Result<Vec<MediaClip>, String> {
 
 pub fn get_media(conn: &Connection, id: &str) -> Result<Option<MediaClip>, String> {
     conn.query_row(
-        "SELECT id, name, media_type, file_name, duration_ms, volume FROM media_clips WHERE id = ?1",
+        &format!("{MEDIA_SELECT} WHERE id = ?1"),
         params![id],
-        |r| {
-            Ok(MediaClip {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                media_type: r.get(2)?,
-                file_name: r.get(3)?,
-                duration_ms: r.get(4)?,
-                volume: r.get(5)?,
-            })
-        },
+        row_to_media,
     )
     .optional()
     .map_err(|e| e.to_string())
@@ -411,21 +492,10 @@ pub fn get_media(conn: &Connection, id: &str) -> Result<Option<MediaClip>, Strin
 pub fn get_media_by_name(conn: &Connection, name: &str) -> Result<Option<MediaClip>, String> {
     let key = name.trim().to_lowercase();
     let mut stmt = conn
-        .prepare(
-            "SELECT id, name, media_type, file_name, duration_ms, volume FROM media_clips",
-        )
+        .prepare(MEDIA_SELECT)
         .map_err(|e| e.to_string())?;
     let rows = stmt
-        .query_map([], |r| {
-            Ok(MediaClip {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                media_type: r.get(2)?,
-                file_name: r.get(3)?,
-                duration_ms: r.get(4)?,
-                volume: r.get(5)?,
-            })
-        })
+        .query_map([], row_to_media)
         .map_err(|e| e.to_string())?;
     for row in rows {
         let clip = row.map_err(|e| e.to_string())?;
@@ -446,12 +516,28 @@ pub fn upsert_media(conn: &Connection, mut clip: MediaClip) -> Result<MediaClip,
     }
     clip.volume = clip.volume.clamp(0, 100);
     clip.duration_ms = clip.duration_ms.max(500);
+    clamp_overlay_rect(&mut clip);
+    if clip.media_type != "image" {
+        clip.always_show = false;
+    }
+    if matches!(clip.media_type.as_str(), "image" | "gif" | "video") {
+        clip.chroma_key = normalize_chroma_key(&clip.chroma_key);
+        clip.chroma_tolerance = clip.chroma_tolerance.clamp(0, 120);
+    } else {
+        clip.chroma_key.clear();
+        clip.chroma_tolerance = crate::models::default_chroma_tolerance();
+    }
     conn.execute(
-        "INSERT INTO media_clips(id, name, media_type, file_name, duration_ms, volume)
-         VALUES(?1,?2,?3,?4,?5,?6)
+        "INSERT INTO media_clips(id, name, media_type, file_name, duration_ms, volume,
+            always_show, overlay_x, overlay_y, overlay_w, overlay_h, chroma_key, chroma_tolerance)
+         VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)
          ON CONFLICT(id) DO UPDATE SET
            name=excluded.name, media_type=excluded.media_type, file_name=excluded.file_name,
-           duration_ms=excluded.duration_ms, volume=excluded.volume",
+           duration_ms=excluded.duration_ms, volume=excluded.volume,
+           always_show=excluded.always_show,
+           overlay_x=excluded.overlay_x, overlay_y=excluded.overlay_y,
+           overlay_w=excluded.overlay_w, overlay_h=excluded.overlay_h,
+           chroma_key=excluded.chroma_key, chroma_tolerance=excluded.chroma_tolerance",
         params![
             clip.id,
             clip.name,
@@ -459,6 +545,13 @@ pub fn upsert_media(conn: &Connection, mut clip: MediaClip) -> Result<MediaClip,
             clip.file_name,
             clip.duration_ms,
             clip.volume,
+            if clip.always_show { 1 } else { 0 },
+            clip.overlay_x,
+            clip.overlay_y,
+            clip.overlay_w,
+            clip.overlay_h,
+            clip.chroma_key,
+            clip.chroma_tolerance,
         ],
     )
     .map_err(|e| e.to_string())?;
