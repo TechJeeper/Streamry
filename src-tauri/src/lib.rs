@@ -11,6 +11,7 @@ mod activity;
 mod auth;
 mod backup;
 mod chat;
+mod control;
 mod db;
 mod engine;
 mod eventsub;
@@ -19,6 +20,7 @@ mod import;
 mod media;
 mod models;
 mod overlay;
+mod streamdeck;
 mod tray;
 mod updates;
 
@@ -30,6 +32,7 @@ pub struct AppState {
     pub chat_tx: Mutex<Option<mpsc::UnboundedSender<ChatOutbound>>>,
     pub bot: Mutex<BotHandle>,
     pub overlay: Arc<overlay::OverlayHub>,
+    pub control: Arc<control::ControlHub>,
 }
 
 pub struct BotHandle {
@@ -98,41 +101,81 @@ fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
         theme: db::get_setting(&db, "theme")?
             .filter(|t| t == "light" || t == "dark")
             .unwrap_or_else(|| "dark".into()),
+        stream_deck_control_enabled: db::get_setting(&db, "stream_deck_control_enabled")?
+            .as_deref()
+            == Some("1"),
+        stream_deck_control_port: db::get_setting(&db, "stream_deck_control_port")?
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(control::DEFAULT_PORT),
+        stream_deck_token: db::get_setting(&db, "stream_deck_token")?.unwrap_or_default(),
     })
 }
 
 #[tauri::command]
 fn save_settings(state: State<'_, AppState>, settings: AppSettings) -> Result<(), String> {
-    let db = state.db.lock();
-    db::set_setting(&db, "client_id", &settings.client_id)?;
-    db::set_setting(&db, "channel", &settings.channel.to_lowercase())?;
-    db::set_setting(&db, "bot_login", &settings.bot_login.to_lowercase())?;
-    db::set_setting(&db, "account_mode", &settings.account_mode)?;
-    db::set_setting(
-        &db,
-        "setup_complete",
-        if settings.setup_complete { "1" } else { "0" },
-    )?;
-    db::set_setting(
-        &db,
-        "confirm_giveaway_entry",
-        if settings.confirm_giveaway_entry {
-            "1"
+    {
+        let db = state.db.lock();
+        db::set_setting(&db, "client_id", &settings.client_id)?;
+        db::set_setting(&db, "channel", &settings.channel.to_lowercase())?;
+        db::set_setting(&db, "bot_login", &settings.bot_login.to_lowercase())?;
+        db::set_setting(&db, "account_mode", &settings.account_mode)?;
+        db::set_setting(
+            &db,
+            "setup_complete",
+            if settings.setup_complete { "1" } else { "0" },
+        )?;
+        db::set_setting(
+            &db,
+            "confirm_giveaway_entry",
+            if settings.confirm_giveaway_entry {
+                "1"
+            } else {
+                "0"
+            },
+        )?;
+        db::set_setting(
+            &db,
+            "timers_live_only",
+            if settings.timers_live_only { "1" } else { "0" },
+        )?;
+        let theme = if settings.theme == "light" {
+            "light"
         } else {
-            "0"
-        },
-    )?;
-    db::set_setting(
-        &db,
-        "timers_live_only",
-        if settings.timers_live_only { "1" } else { "0" },
-    )?;
-    let theme = if settings.theme == "light" {
-        "light"
-    } else {
-        "dark"
-    };
-    db::set_setting(&db, "theme", theme)?;
+            "dark"
+        };
+        db::set_setting(&db, "theme", theme)?;
+        db::set_setting(
+            &db,
+            "stream_deck_control_enabled",
+            if settings.stream_deck_control_enabled {
+                "1"
+            } else {
+                "0"
+            },
+        )?;
+        let port = if settings.stream_deck_control_port == 0 {
+            control::DEFAULT_PORT
+        } else {
+            settings.stream_deck_control_port
+        };
+        db::set_setting(&db, "stream_deck_control_port", &port.to_string())?;
+        if !settings.stream_deck_token.is_empty() {
+            db::set_setting(&db, "stream_deck_token", &settings.stream_deck_token)?;
+        }
+    }
+    // Sync live control hub (port changes require app restart)
+    state
+        .control
+        .set_enabled(settings.stream_deck_control_enabled);
+    if !settings.stream_deck_token.is_empty() {
+        state.control.set_token(settings.stream_deck_token.clone());
+    }
+    if settings.stream_deck_control_enabled && streamdeck::is_installed() {
+        let token = state.control.token_snapshot();
+        if !token.is_empty() {
+            let _ = streamdeck::write_connection_file(state.control.port, &token);
+        }
+    }
     Ok(())
 }
 
@@ -298,6 +341,17 @@ async fn start_bot_connection(state: &AppState, app: AppHandle) -> Result<(), St
 
 #[tauri::command]
 fn disconnect_bot(state: State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    let _ = state;
+    control_disconnect_bot(app)
+}
+
+pub async fn control_connect_bot(app: AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    start_bot_connection(state.inner(), app.clone()).await
+}
+
+pub fn control_disconnect_bot(app: AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
     if let Some(tx) = state.bot.lock().stop.take() {
         let _ = tx.send(true);
     }
@@ -685,6 +739,27 @@ async fn check_app_name(name: String) -> Result<auth::NameCheckResult, String> {
     auth::check_app_name_hint(&name).await
 }
 
+#[tauri::command]
+fn get_streamdeck_status(state: State<'_, AppState>) -> StreamDeckStatus {
+    streamdeck::status(&state)
+}
+
+#[tauri::command]
+fn install_streamdeck_plugin(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<StreamDeckStatus, String> {
+    streamdeck::install_plugin(&app, &state)
+}
+
+#[tauri::command]
+fn set_streamdeck_control(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<StreamDeckStatus, String> {
+    streamdeck::set_control_enabled(&state, enabled)
+}
+
 fn startup_log(msg: &str) {
     let path = data_dir().join("startup.log");
     let line = format!("{} {}\n", chrono::Local::now().to_rfc3339(), msg);
@@ -734,12 +809,42 @@ pub fn run() {
                 });
             }
 
+            let control_port = db::get_setting(&conn, "stream_deck_control_port")
+                .ok()
+                .flatten()
+                .and_then(|s| s.parse::<u16>().ok())
+                .unwrap_or(control::DEFAULT_PORT);
+            let control_enabled = db::get_setting(&conn, "stream_deck_control_enabled")
+                .ok()
+                .flatten()
+                .as_deref()
+                == Some("1");
+            let control_token = db::get_setting(&conn, "stream_deck_token")
+                .ok()
+                .flatten()
+                .unwrap_or_default();
+            let control_hub = Arc::new(control::ControlHub::new(
+                control_port,
+                control_enabled,
+                control_token,
+            ));
+            {
+                let control_clone = control_hub.clone();
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = control::start_server(handle, control_clone).await {
+                        eprintln!("control API: {e}");
+                    }
+                });
+            }
+
             app.manage(AppState {
                 db: Mutex::new(conn),
                 runtime: Mutex::new(RuntimeStatus::default()),
                 chat_tx: Mutex::new(None),
                 bot: Mutex::new(BotHandle { stop: None }),
                 overlay: hub,
+                control: control_hub,
             });
             if let Err(e) = tray::setup_tray(app.handle()) {
                 startup_log(&format!("tray setup failed (continuing): {e}"));
@@ -849,6 +954,9 @@ pub fn run() {
             dismiss_update,
             reset_app,
             check_app_name,
+            get_streamdeck_status,
+            install_streamdeck_plugin,
+            set_streamdeck_control,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Streamry");

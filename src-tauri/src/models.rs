@@ -12,6 +12,29 @@ pub struct AppSettings {
     pub timers_live_only: bool,
     #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default)]
+    pub stream_deck_control_enabled: bool,
+    #[serde(default = "default_stream_deck_port")]
+    pub stream_deck_control_port: u16,
+    #[serde(default)]
+    pub stream_deck_token: String,
+}
+
+fn default_stream_deck_port() -> u16 {
+    1920
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamDeckStatus {
+    pub installed: bool,
+    pub install_path: Option<String>,
+    pub control_enabled: bool,
+    pub control_port: u16,
+    pub control_running: bool,
+    pub has_token: bool,
+    pub supported: bool,
+    pub message: String,
 }
 
 fn default_theme() -> String {

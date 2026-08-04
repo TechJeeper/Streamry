@@ -14,6 +14,11 @@ dist-packages
 src-tauri/target
 *.local
 
+# Stream Deck plugin build artifacts
+streamdeck/com.streamry.streamdeck.sdPlugin/bin/
+streamdeck/com.streamry.streamdeck.sdPlugin/logs/
+streamdeck/*.log
+
 # Secrets / local env
 .githubEnv
 .macssh

@@ -1,6 +1,6 @@
 # Streamry
 
-Easy, local Twitch bot for streamers — commands, timers, giveaways, and automations.
+Easy, local Twitch bot for streamers — commands, timers, giveaways, automations, and Stream Deck control.
 
 **Website:** [techjeeper.github.io/Streamry](https://techjeeper.github.io/Streamry/)  
 **Source:** [github.com/TechJeeper/Streamry](https://github.com/TechJeeper/Streamry)
@@ -9,8 +9,8 @@ Easy, local Twitch bot for streamers — commands, timers, giveaways, and automa
 
 | Platform | Installer |
 | -------- | --------- |
-| Windows 10/11 (x64) | [Streamry_0.1.3_x64-setup.exe](Website/downloads/Streamry_0.1.3_x64-setup.exe) |
-| macOS (Apple silicon + Intel) | [Streamry_0.1.3_universal.dmg](Website/downloads/Streamry_0.1.3_universal.dmg) |
+| Windows 10/11 (x64) | [Streamry_0.1.4_x64-setup.exe](Website/downloads/Streamry_0.1.4_x64-setup.exe) |
+| macOS (Apple silicon + Intel) | [Streamry_0.1.4_universal.dmg](Website/downloads/Streamry_0.1.4_universal.dmg) |
 
 Or use the [downloads page](https://techjeeper.github.io/Streamry/downloads.html).
 
@@ -18,6 +18,7 @@ Or use the [downloads page](https://techjeeper.github.io/Streamry/downloads.html
 
 - Connect as your streamer account or a dedicated bot account
 - Chat commands, timers, giveaways (CSPRNG winner draws), event automations
+- Stream Deck plugin — one-click install from Settings; keys for commands, automations, giveaways, media, chat, and bot connect/disconnect
 - Import commands/timers from StreamElements export ZIPs
 - Minimize to tray, start on boot, backup/restore (`.streamry`)
 - Checks [Website/version.json](Website/version.json) for updates on launch

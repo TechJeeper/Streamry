@@ -14,6 +14,7 @@ import type {
   OverlayInfo,
   RuntimeStatus,
   SePreview,
+  StreamDeckStatus,
   UpdateCheck,
 } from "./types";
 
@@ -106,4 +107,9 @@ export const api = {
       message: string;
       suggested?: string | null;
     }>("check_app_name", { name }),
+  getStreamDeckStatus: () => invoke<StreamDeckStatus>("get_streamdeck_status"),
+  installStreamDeckPlugin: () =>
+    invoke<StreamDeckStatus>("install_streamdeck_plugin"),
+  setStreamDeckControl: (enabled: boolean) =>
+    invoke<StreamDeckStatus>("set_streamdeck_control", { enabled }),
 };

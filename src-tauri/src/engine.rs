@@ -154,7 +154,85 @@ pub fn handle_usernotice(app: &AppHandle, event: &crate::chat::UserNoticeEvent) 
     }
 }
 
-fn run_automation(app: &AppHandle, auto: &Automation, user: &str) {
+pub fn run_automation_by_id(app: &AppHandle, id: &str) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let auto = {
+        let db = state.db.lock();
+        db::list_automations(&db)?
+            .into_iter()
+            .find(|a| a.id == id)
+            .ok_or_else(|| "Automation not found".to_string())?
+    };
+    if !auto.enabled {
+        return Err("Automation is disabled".into());
+    }
+    run_automation(app, &auto, "Stream Deck");
+    Ok(())
+}
+
+/// Run a command by id as if triggered from Stream Deck (broadcaster privileges).
+pub fn run_command_by_id(app: &AppHandle, id: &str) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let cmd = {
+        let db = state.db.lock();
+        db::list_commands(&db)?
+            .into_iter()
+            .find(|c| c.id == id)
+            .ok_or_else(|| "Command not found".to_string())?
+    };
+    if !cmd.enabled {
+        return Err("Command is disabled".into());
+    }
+
+    let channel = state
+        .runtime
+        .lock()
+        .channel
+        .clone()
+        .unwrap_or_default();
+
+    let chat = IncomingChat {
+        user_id: "streamdeck".into(),
+        login: "streamdeck".into(),
+        display: "Stream Deck".into(),
+        message: format!("!{}", cmd.name),
+        is_mod: true,
+        is_vip: true,
+        is_sub: true,
+        is_broadcaster: true,
+    };
+
+    let media_note = if let Some(media_id) = cmd.media_id.as_ref().filter(|s| !s.is_empty()) {
+        let name = play_media_by_ref(app, media_id, false);
+        name.map(|n| format!(" · media {n}")).unwrap_or_default()
+    } else {
+        String::new()
+    };
+
+    crate::activity::push(
+        app,
+        "command",
+        format!("!{}", cmd.name),
+        format!("Triggered by Stream Deck{media_note}"),
+        "/commands",
+        Some(cmd.id.clone()),
+    );
+
+    let response = cmd.response.trim();
+    if !response.is_empty() {
+        let custom_vars = db::list_variables(&state.db.lock()).unwrap_or_default();
+        let msg = render_vars(response, &chat, &channel, None, &custom_vars);
+        let tx = state.chat_tx.lock().clone();
+        if let Some(tx) = tx {
+            let _ = tx.send(ChatOutbound::Message(msg));
+        } else {
+            return Err("Bot is not connected.".into());
+        }
+    }
+    Ok(())
+}
+
+pub fn run_automation(app: &AppHandle, auto: &Automation, user: &str) {
     let action_label = match auto.action_type.as_str() {
         "chat" => "sent chat",
         "enable_command" => "enabled command",

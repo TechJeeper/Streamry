@@ -1,7 +1,7 @@
 {
   "name": "Streamry",
   "short_name": "Streamry",
-  "description": "Local Twitch bot for commands, timers, giveaways, and automations.",
+  "description": "Local Twitch bot for commands, timers, giveaways, automations, and Stream Deck control.",
   "start_url": "./",
   "display": "browser",
   "background_color": "#0c1412",

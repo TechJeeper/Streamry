@@ -15,23 +15,26 @@ const SCOPES = [
 const TWITCH_CONSOLE = "https://dev.twitch.tv/console";
 const TWITCH_CONSOLE_HOME = "https://dev.twitch.tv/console/apps";
 const TWITCH_REGISTER = "https://dev.twitch.tv/console/apps/create";
-const GUIDE_LAST_STEP = 4;
+const GUIDE_LAST_STEP = 3;
 
 type Phase =
   | "welcome"
+  | "account"
   | "guide"
   | "paste"
-  | "account"
   | "bot-create"
   | "bot-mod"
   | "bot-channel"
   | "authorize"
   | "done";
 
+/** How the user entered setup after the welcome screen. */
+type SetupPath = "walkthrough" | "paste";
+
 export function Setup({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<Phase>("welcome");
+  const [setupPath, setSetupPath] = useState<SetupPath>("walkthrough");
   const [guideStep, setGuideStep] = useState(0);
-  const [appName, setAppName] = useState("Streamry");
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [device, setDevice] = useState<DeviceCode | null>(null);
   const [error, setError] = useState("");
@@ -41,7 +44,10 @@ export function Setup({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     api.getSettings().then((s) => {
       setSettings(s);
-      if (s.clientId) setPhase("paste");
+      if (s.clientId) {
+        setSetupPath("paste");
+        setPhase("paste");
+      }
     });
   }, []);
 
@@ -93,6 +99,36 @@ export function Setup({ onDone }: { onDone: () => void }) {
     onDone();
   }
 
+  function afterClientId() {
+    if (settings!.accountMode === "bot") {
+      setPhase("bot-mod");
+      return;
+    }
+    void startLogin();
+  }
+
+  function afterAccountChoice() {
+    if (settings!.accountMode === "bot") {
+      setPhase("bot-create");
+      return;
+    }
+    if (setupPath === "walkthrough") {
+      setGuideStep(0);
+      setPhase("guide");
+      return;
+    }
+    void startLogin();
+  }
+
+  function afterBotCreate() {
+    if (setupPath === "walkthrough") {
+      setGuideStep(0);
+      setPhase("guide");
+      return;
+    }
+    setPhase("bot-mod");
+  }
+
   return (
     <div className="setup">
       <div className="setup-card">
@@ -102,24 +138,90 @@ export function Setup({ onDone }: { onDone: () => void }) {
         {phase === "welcome" && (
           <>
             <p className="lead">
-              To talk to Twitch, Streamry needs a <strong>Client ID</strong>{" "}
-              — a free key from Twitch that identifies this app. Takes about two
-              minutes, one time only.
+              Let’s get Streamry talking to Twitch. We’ll help you create a
+              free <strong>Client ID</strong> and connect your account — about
+              two minutes, one time only.
             </p>
             <div className="choice-grid">
               <button
                 className="choice"
                 onClick={() => {
-                  setGuideStep(0);
-                  setPhase("guide");
+                  setSetupPath("walkthrough");
+                  setPhase("account");
                 }}
               >
-                <strong>Help me get a Client ID</strong>
-                <span>Step-by-step guide — we’ll open Twitch for you.</span>
+                <strong>Walk me through getting started</strong>
+                <span>
+                  Choose bot or your own account, then we’ll guide you step by
+                  step.
+                </span>
               </button>
-              <button className="choice" onClick={() => setPhase("paste")}>
-                <strong>I already have a Client ID</strong>
+              <button
+                className="choice"
+                onClick={() => {
+                  setSetupPath("paste");
+                  setPhase("paste");
+                }}
+              >
+                <strong>I have a Client ID</strong>
                 <span>Paste it and continue.</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {phase === "account" && (
+          <>
+            <p className="lead" style={{ marginBottom: 12 }}>
+              Bot or your own account?
+            </p>
+            <p className="hint" style={{ marginBottom: 16 }}>
+              Who should appear in chat when Streamry replies?
+            </p>
+            <div className="choice-grid">
+              <button
+                className={`choice ${settings.accountMode === "bot" ? "selected" : ""}`}
+                onClick={() => savePartial({ accountMode: "bot" })}
+              >
+                <strong>A separate bot account</strong>
+                <span>
+                  Replies show under a bot name. We’ll walk you through creating
+                  a second Twitch account if you need one.
+                </span>
+              </button>
+              <button
+                className={`choice ${settings.accountMode === "streamer" ? "selected" : ""}`}
+                onClick={() => savePartial({ accountMode: "streamer" })}
+              >
+                <strong>My own account</strong>
+                <span>
+                  Replies show as you. Log in with the same Twitch account you
+                  stream on — no extra account needed.
+                </span>
+              </button>
+            </div>
+            <div className="btn-row">
+              <button
+                className="btn btn-ghost"
+                onClick={() =>
+                  setPhase(setupPath === "paste" ? "paste" : "welcome")
+                }
+              >
+                Back
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={busy || !settings.accountMode}
+                onClick={async () => {
+                  await savePartial({ accountMode: settings.accountMode });
+                  afterAccountChoice();
+                }}
+              >
+                {settings.accountMode === "bot"
+                  ? "Continue with bot setup"
+                  : setupPath === "walkthrough"
+                    ? "Continue"
+                    : "Connect with Twitch"}
               </button>
             </div>
           </>
@@ -128,26 +230,22 @@ export function Setup({ onDone }: { onDone: () => void }) {
         {phase === "guide" && (
           <GuideSteps
             step={guideStep}
-            appName={appName}
-            onAppName={setAppName}
             clientId={settings.clientId}
             onClientId={(v) => setSettings({ ...settings, clientId: v.trim() })}
+            accountMode={settings.accountMode === "bot" ? "bot" : "streamer"}
+            botLoginHint={botLoginHint}
             onBack={() => {
-              if (guideStep === 0) setPhase("welcome");
-              else setGuideStep((s) => s - 1);
+              if (guideStep === 0) {
+                setPhase(
+                  settings.accountMode === "bot" ? "bot-create" : "account",
+                );
+              } else {
+                setGuideStep((s) => s - 1);
+              }
             }}
             onNext={async () => {
-              if (guideStep === 0) {
-                const n = appName.trim();
-                if (n.length < 3 || n.length > 100) {
-                  setError("App name must be 3–100 characters.");
-                  return;
-                }
-                setError("");
-                setGuideStep(1);
-                return;
-              }
               if (guideStep < GUIDE_LAST_STEP) {
+                setError("");
                 setGuideStep((s) => s + 1);
                 return;
               }
@@ -157,7 +255,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
               }
               setError("");
               await savePartial({ clientId: settings.clientId });
-              setPhase("account");
+              afterClientId();
             }}
           />
         )}
@@ -198,8 +296,8 @@ export function Setup({ onDone }: { onDone: () => void }) {
               <button
                 className="btn btn-ghost"
                 onClick={() => {
-                  setGuideStep(0);
-                  setPhase("guide");
+                  setSetupPath("walkthrough");
+                  setPhase("account");
                 }}
               >
                 Need help instead?
@@ -218,70 +316,21 @@ export function Setup({ onDone }: { onDone: () => void }) {
           </>
         )}
 
-        {phase === "account" && (
-          <>
-            <p className="lead" style={{ marginBottom: 12 }}>
-              Who should appear in chat when Streamry replies?
-            </p>
-            <div className="choice-grid">
-              <button
-                className={`choice ${settings.accountMode === "streamer" ? "selected" : ""}`}
-                onClick={() => savePartial({ accountMode: "streamer" })}
-              >
-                <strong>My streamer account</strong>
-                <span>
-                  Replies show as you. Log in with the same Twitch account you
-                  stream on — no extra account needed.
-                </span>
-              </button>
-              <button
-                className={`choice ${settings.accountMode === "bot" ? "selected" : ""}`}
-                onClick={() => savePartial({ accountMode: "bot" })}
-              >
-                <strong>A separate bot account</strong>
-                <span>
-                  Replies show under a bot name. We’ll walk you through creating
-                  a second Twitch account if you need one.
-                </span>
-              </button>
-            </div>
-            <div className="btn-row">
-              <button className="btn btn-ghost" onClick={() => setPhase("paste")}>
-                Back
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={busy || !settings.accountMode}
-                onClick={async () => {
-                  await savePartial({ accountMode: settings.accountMode });
-                  if (settings.accountMode === "bot") {
-                    setPhase("bot-create");
-                    return;
-                  }
-                  await startLogin();
-                }}
-              >
-                {settings.accountMode === "bot"
-                  ? "Continue with bot setup"
-                  : "Connect with Twitch"}
-              </button>
-            </div>
-          </>
-        )}
-
         {phase === "bot-create" && (
           <>
-            <BotPrepProgress step={0} />
+            <BotPrepProgress
+              step={0}
+              includeClientId={setupPath === "walkthrough"}
+            />
             <h2 className="guide-title">Create the bot Twitch account</h2>
             <p className="lead">
-              The bot needs its own Twitch login — separate from{" "}
-              <strong>{settings.channel || "your streamer account"}</strong>.
-              Skip ahead if you already have one.
+              The bot needs its own Twitch login — separate from your streamer
+              account. Skip ahead if you already have one.
             </p>
             <ol className="guide-list">
               <li>Open signup and register a new account (e.g. YourNameBot).</li>
               <li>Verify email if Twitch asks — you’ll need it to log in.</li>
-              <li>Remember that username; you’ll authorize as it next.</li>
+              <li>Remember that username; you’ll use it next.</li>
             </ol>
             <div className="field">
               <label>Bot username (optional reminder)</label>
@@ -300,13 +349,13 @@ export function Setup({ onDone }: { onDone: () => void }) {
               </button>
             </div>
             <div className="btn-row" style={{ marginTop: 16 }}>
-              <button className="btn btn-ghost" onClick={() => setPhase("account")}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setPhase("account")}
+              >
                 Back
               </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => setPhase("bot-mod")}
-              >
+              <button className="btn btn-primary" onClick={afterBotCreate}>
                 I have a bot account
               </button>
             </div>
@@ -315,7 +364,10 @@ export function Setup({ onDone }: { onDone: () => void }) {
 
         {phase === "bot-mod" && (
           <>
-            <BotPrepProgress step={1} />
+            <BotPrepProgress
+              step={setupPath === "walkthrough" ? 2 : 1}
+              includeClientId={setupPath === "walkthrough"}
+            />
             <h2 className="guide-title">Make the bot a moderator</h2>
             <p className="lead">
               Log into Twitch as your <strong>streamer</strong> account, open
@@ -324,9 +376,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
             <div className="guide-card">
               <div className="guide-row">
                 <span>In your chat, type</span>
-                <strong>
-                  /mod {botLoginHint || "BotName"}
-                </strong>
+                <strong>/mod {botLoginHint || "BotName"}</strong>
               </div>
             </div>
             <p className="hint">
@@ -336,7 +386,9 @@ export function Setup({ onDone }: { onDone: () => void }) {
             <div className="btn-row" style={{ marginTop: 16 }}>
               <button
                 className="btn btn-ghost"
-                onClick={() => setPhase("bot-create")}
+                onClick={() =>
+                  setPhase(setupPath === "walkthrough" ? "guide" : "bot-create")
+                }
               >
                 Back
               </button>
@@ -352,7 +404,10 @@ export function Setup({ onDone }: { onDone: () => void }) {
 
         {phase === "bot-channel" && (
           <>
-            <BotPrepProgress step={2} />
+            <BotPrepProgress
+              step={setupPath === "walkthrough" ? 3 : 2}
+              includeClientId={setupPath === "walkthrough"}
+            />
             <h2 className="guide-title">Your stream channel</h2>
             <p className="lead">
               Enter the channel Streamry should join — your streamer username,
@@ -437,7 +492,11 @@ export function Setup({ onDone }: { onDone: () => void }) {
                 className="btn btn-ghost"
                 onClick={() =>
                   setPhase(
-                    settings.accountMode === "bot" ? "bot-channel" : "account",
+                    settings.accountMode === "bot"
+                      ? "bot-channel"
+                      : setupPath === "walkthrough"
+                        ? "guide"
+                        : "account",
                   )
                 }
               >
@@ -465,10 +524,14 @@ export function Setup({ onDone }: { onDone: () => void }) {
             {settings.accountMode === "bot" &&
               settings.botLogin &&
               settings.channel &&
-              settings.botLogin.toLowerCase() === settings.channel.toLowerCase() && (
-                <p className="hint" style={{ color: "var(--warn)", marginBottom: 12 }}>
-                  Bot login matches your channel — you authorized as the streamer.
-                  Connect again while logged into Twitch as the bot.
+              settings.botLogin.toLowerCase() ===
+                settings.channel.toLowerCase() && (
+                <p
+                  className="hint"
+                  style={{ color: "var(--warn)", marginBottom: 12 }}
+                >
+                  Bot login matches your channel — you authorized as the
+                  streamer. Connect again while logged into Twitch as the bot.
                 </p>
               )}
             <div className="btn-row">
@@ -499,8 +562,16 @@ export function Setup({ onDone }: { onDone: () => void }) {
   );
 }
 
-function BotPrepProgress({ step }: { step: number }) {
-  const labels = ["Create bot", "Mod bot", "Channel"];
+function BotPrepProgress({
+  step,
+  includeClientId,
+}: {
+  step: number;
+  includeClientId: boolean;
+}) {
+  const labels = includeClientId
+    ? ["Create bot", "Client ID", "Mod bot", "Channel"]
+    : ["Create bot", "Mod bot", "Channel"];
   return (
     <>
       <div className="guide-progress">
@@ -510,6 +581,7 @@ function BotPrepProgress({ step }: { step: number }) {
       </div>
       <p className="guide-step-label">
         Bot setup · Step {step + 1} of {labels.length}
+        {labels[step] ? ` · ${labels[step]}` : ""}
       </p>
     </>
   );
@@ -517,112 +589,27 @@ function BotPrepProgress({ step }: { step: number }) {
 
 function GuideSteps({
   step,
-  appName,
-  onAppName,
   clientId,
   onClientId,
+  accountMode,
+  botLoginHint,
   onBack,
   onNext,
 }: {
   step: number;
-  appName: string;
-  onAppName: (v: string) => void;
   clientId: string;
   onClientId: (v: string) => void;
+  accountMode: "bot" | "streamer";
+  botLoginHint: string;
   onBack: () => void;
   onNext: () => void;
 }) {
-  const [checkMsg, setCheckMsg] = useState("");
-  const [checkStatus, setCheckStatus] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [suggested, setSuggested] = useState<string | null>(null);
-
-  useEffect(() => {
-    setCheckMsg("");
-    setCheckStatus("");
-    setSuggested(null);
-  }, [appName]);
-
-  async function runCheck() {
-    setChecking(true);
-    setCheckMsg("");
-    setSuggested(null);
-    try {
-      const r = await api.checkAppName(appName);
-      setCheckStatus(r.status);
-      setCheckMsg(r.message);
-      setSuggested(r.suggested ?? null);
-    } catch (e) {
-      setCheckStatus("unknown");
-      setCheckMsg(String(e));
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  const nameCheckPassed = checkStatus === "available";
-  const canGoNext = step !== 0 || nameCheckPassed;
+  const loginAs =
+    accountMode === "bot"
+      ? botLoginHint || "your bot account"
+      : "your streamer account";
 
   const steps = [
-    {
-      title: "Name your Twitch app",
-      body: (
-        <>
-          <p className="lead">
-            Twitch requires a unique name for the developer app. Pick something
-            that won’t collide with someone else’s — often your channel plus
-            “Bot” works well.
-          </p>
-          <div className="field">
-            <label>App name</label>
-            <input
-              value={appName}
-              onChange={(e) => onAppName(e.target.value)}
-              placeholder="e.g. CoolStreamerBot"
-              autoFocus
-            />
-          </div>
-          <div className="btn-row" style={{ marginBottom: 12 }}>
-            <button
-              className="btn btn-ghost"
-              disabled={checking || appName.trim().length < 3}
-              onClick={runCheck}
-            >
-              {checking ? "Checking…" : "Check on Twitch"}
-            </button>
-            {suggested && (
-              <button
-                className="btn btn-accent"
-                onClick={() => onAppName(suggested)}
-              >
-                Use “{suggested}”
-              </button>
-            )}
-          </div>
-          {checkMsg && (
-            <p
-              className="hint"
-              style={{
-                color:
-                  checkStatus === "available"
-                    ? "var(--ok)"
-                    : checkStatus === "taken"
-                      ? "var(--warn)"
-                      : "var(--muted)",
-              }}
-            >
-              {checkMsg}
-            </p>
-          )}
-          {!nameCheckPassed && (
-            <p className="hint" style={{ marginTop: 10 }}>
-              Run <strong>Check on Twitch</strong> and get an available result
-              before continuing.
-            </p>
-          )}
-        </>
-      ),
-    },
     {
       title: "Open the Twitch Developer Console",
       body: (
@@ -633,8 +620,16 @@ function GuideSteps({
           </p>
           <ol className="guide-list">
             <li>Click the button below to open Twitch Developers.</li>
-            <li>Log in with your streamer account if asked.</li>
-            <li>You should see an <strong>Applications</strong> section on the dashboard.</li>
+            <li>
+              Log in as <strong>{loginAs}</strong>
+              {accountMode === "bot"
+                ? " — not your streamer account."
+                : " if asked."}
+            </li>
+            <li>
+              You should see an <strong>Applications</strong> section on the
+              dashboard.
+            </li>
           </ol>
           <button
             className="btn btn-accent"
@@ -657,7 +652,7 @@ function GuideSteps({
           <div className="guide-card">
             <div className="guide-row">
               <span>Name</span>
-              <strong>{appName.trim() || "Streamry"}</strong>
+              <strong>Pick any name you like</strong>
             </div>
             <div className="guide-row">
               <span>OAuth Redirect URL</span>
@@ -673,14 +668,19 @@ function GuideSteps({
             </div>
           </div>
           <ol className="guide-list">
-            <li>Choose <strong>Public</strong>, not Confidential.</li>
+            <li>
+              Choose <strong>Public</strong>, not Confidential.
+            </li>
+            <li>
+              The name is only a Console label — it does not affect chat.
+            </li>
             <li>
               When the form is complete, create the application at the bottom of
               the page.
             </li>
             <li>
-              Already created <strong>{appName.trim()}</strong>? Skip ahead — find
-              it in your Applications list.
+              Already have an app? Skip ahead — find it in your Applications
+              list.
             </li>
           </ol>
           <div className="btn-row">
@@ -705,9 +705,8 @@ function GuideSteps({
       body: (
         <>
           <p className="lead">
-            Back on the Console, find{" "}
-            <strong>{appName.trim() || "your app"}</strong> under Applications
-            and click <strong>Manage</strong>.
+            Back on the Console, find your app under Applications and click{" "}
+            <strong>Manage</strong>.
           </p>
           <ol className="guide-list">
             <li>
@@ -747,13 +746,17 @@ function GuideSteps({
 
   return (
     <>
+      {accountMode === "bot" && (
+        <BotPrepProgress step={1} includeClientId />
+      )}
       <div className="guide-progress">
         {steps.map((_, i) => (
           <span key={i} className={i <= step ? "on" : ""} />
         ))}
       </div>
       <p className="guide-step-label">
-        Step {step + 1} of {steps.length}
+        {accountMode === "bot" ? "Client ID" : "Getting started"} · Step{" "}
+        {step + 1} of {steps.length}
       </p>
       <h2 className="guide-title">{current.title}</h2>
       {current.body}
@@ -761,14 +764,7 @@ function GuideSteps({
         <button className="btn btn-ghost" onClick={onBack}>
           Back
         </button>
-        <button
-          className="btn btn-primary"
-          disabled={!canGoNext}
-          onClick={() => {
-            if (!canGoNext) return;
-            onNext();
-          }}
-        >
+        <button className="btn btn-primary" onClick={onNext}>
           {step === steps.length - 1 ? "Save & continue" : "Next"}
         </button>
       </div>

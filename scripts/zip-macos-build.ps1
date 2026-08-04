@@ -58,6 +58,18 @@ Get-ChildItem -Path "src-tauri" -Force | Where-Object { $_.Name -ne "target" } |
     Copy-Item -Path $_.FullName -Destination (Join-Path $tauriDest $_.Name) -Recurse -Force
 }
 
+# Stream Deck plugin source (beforeBuildCommand runs npm run build:streamdeck)
+if (Test-Path "streamdeck") {
+    Write-Host "Copying streamdeck/ (excluding node_modules/)"
+    $sdDest = Join-Path $stagingPath "streamdeck"
+    New-Item -ItemType Directory -Path $sdDest | Out-Null
+    Get-ChildItem -Path "streamdeck" -Force | Where-Object {
+        $_.Name -ne "node_modules" -and $_.Name -ne ".git"
+    } | ForEach-Object {
+        Copy-Item -Path $_.FullName -Destination (Join-Path $sdDest $_.Name) -Recurse -Force
+    }
+}
+
 $readme = @"
 Streamry macOS build package ($version)
 =======================================

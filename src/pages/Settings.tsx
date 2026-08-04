@@ -8,6 +8,7 @@ import { CollapsiblePanel } from "../components/CollapsiblePanel";
 import { applyTheme } from "../theme";
 import type { AppSettings, DeviceCode, UpdateCheck } from "../types";
 import { SeImportPanel } from "./SeImportPanel";
+import { StreamDeckPanel } from "./StreamDeckPanel";
 
 const SCOPES = [
   "chat:read",
@@ -108,7 +109,7 @@ export function Settings() {
       <div className="page-head">
         <div>
           <h1>Settings</h1>
-          <p>Twitch connection, startup, StreamElements import, backups, and reset.</p>
+          <p>Twitch connection, startup, Stream Deck, StreamElements import, backups, and reset.</p>
         </div>
       </div>
 
@@ -346,6 +347,13 @@ export function Settings() {
       </div>
 
       <SeImportPanel />
+
+      {settings && (
+        <StreamDeckPanel
+          settings={settings}
+          onSettings={(next) => setSettings(next)}
+        />
+      )}
 
       <CollapsiblePanel
         title="Backup & restore"

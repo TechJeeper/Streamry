@@ -18,6 +18,20 @@ export type AppSettings = {
   confirmGiveawayEntry: boolean;
   timersLiveOnly: boolean;
   theme: string;
+  streamDeckControlEnabled?: boolean;
+  streamDeckControlPort?: number;
+  streamDeckToken?: string;
+};
+
+export type StreamDeckStatus = {
+  installed: boolean;
+  installPath?: string | null;
+  controlEnabled: boolean;
+  controlPort: number;
+  controlRunning: boolean;
+  hasToken: boolean;
+  supported: boolean;
+  message: string;
 };
 
 export type ChatCommand = {

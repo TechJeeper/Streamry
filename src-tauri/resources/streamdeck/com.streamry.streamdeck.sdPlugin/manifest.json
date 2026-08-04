@@ -1,0 +1,108 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "UUID": "com.streamry.streamdeck",
+  "Name": "Streamry",
+  "Version": "0.1.0.0",
+  "Author": "Streamry",
+  "Category": "Streamry",
+  "CategoryIcon": "imgs/category",
+  "Icon": "imgs/plugin",
+  "Description": "Trigger Streamry commands, automations, giveaways, media, and chat from your Stream Deck.",
+  "CodePath": "bin/plugin.js",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.6"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20"
+  },
+  "Actions": [
+    {
+      "Name": "Run Command",
+      "UUID": "com.streamry.streamdeck.command.run",
+      "Icon": "imgs/action",
+      "Tooltip": "Run a Streamry chat command",
+      "Controllers": ["Keypad"],
+      "PropertyInspectorPath": "ui/select-entity.html",
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Run Automation",
+      "UUID": "com.streamry.streamdeck.automation.run",
+      "Icon": "imgs/action",
+      "Tooltip": "Run a Streamry automation",
+      "Controllers": ["Keypad"],
+      "PropertyInspectorPath": "ui/select-entity.html",
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Start Giveaway",
+      "UUID": "com.streamry.streamdeck.giveaway.start",
+      "Icon": "imgs/action",
+      "Tooltip": "Start a Streamry giveaway",
+      "Controllers": ["Keypad"],
+      "PropertyInspectorPath": "ui/select-entity.html",
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Stop Giveaway",
+      "UUID": "com.streamry.streamdeck.giveaway.stop",
+      "Icon": "imgs/action",
+      "Tooltip": "Stop the active giveaway",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Draw Giveaway",
+      "UUID": "com.streamry.streamdeck.giveaway.draw",
+      "Icon": "imgs/action",
+      "Tooltip": "Draw winners for the active giveaway",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Play Media",
+      "UUID": "com.streamry.streamdeck.media.play",
+      "Icon": "imgs/action",
+      "Tooltip": "Play a media clip on the OBS overlay",
+      "Controllers": ["Keypad"],
+      "PropertyInspectorPath": "ui/select-entity.html",
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Send Chat",
+      "UUID": "com.streamry.streamdeck.chat.send",
+      "Icon": "imgs/action",
+      "Tooltip": "Send a chat message as the bot",
+      "Controllers": ["Keypad"],
+      "PropertyInspectorPath": "ui/chat-send.html",
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Connect Bot",
+      "UUID": "com.streamry.streamdeck.bot.connect",
+      "Icon": "imgs/action",
+      "Tooltip": "Connect the Streamry bot to Twitch",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    },
+    {
+      "Name": "Disconnect Bot",
+      "UUID": "com.streamry.streamdeck.bot.disconnect",
+      "Icon": "imgs/action",
+      "Tooltip": "Disconnect the Streamry bot",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/key", "TitleAlignment": "middle" }]
+    }
+  ]
+}

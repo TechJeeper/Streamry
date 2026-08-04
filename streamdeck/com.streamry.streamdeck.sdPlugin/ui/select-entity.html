@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Streamry</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        color: #eee;
+        margin: 12px;
+        font-size: 13px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        opacity: 0.8;
+      }
+      select,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+        padding: 6px 8px;
+      }
+      .err {
+        color: #f88;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <label for="entity">Item</label>
+    <select id="entity">
+      <option value="">Loading…</option>
+    </select>
+    <div id="err" class="err"></div>
+    <script>
+      let websocket = null;
+      let uuid = null;
+      let actionInfo = null;
+      let settings = {};
+
+      function kindFromUuid(u) {
+        if (!u) return "commands";
+        if (u.includes("automation")) return "automations";
+        if (u.includes("giveaway")) return "giveaways";
+        if (u.includes("media")) return "media";
+        return "commands";
+      }
+
+      function connectElgatoStreamDeckSocket(port, pluginUuid, registerEvent, info, actionInfoRaw) {
+        uuid = pluginUuid;
+        actionInfo = JSON.parse(actionInfoRaw);
+        settings = actionInfo.payload?.settings || {};
+        websocket = new WebSocket("ws://127.0.0.1:" + port);
+        websocket.onopen = function () {
+          websocket.send(JSON.stringify({ event: registerEvent, uuid: pluginUuid }));
+          requestList();
+        };
+        websocket.onmessage = function (evt) {
+          const msg = JSON.parse(evt.data);
+          if (msg.event === "sendToPropertyInspector") {
+            const p = msg.payload || {};
+            if (p.event === "listResult") fillSelect(p.items || []);
+            if (p.event === "listError") {
+              document.getElementById("err").textContent = p.error || "Failed to load";
+            }
+          }
+        };
+      }
+
+      function requestList() {
+        const kind = kindFromUuid(actionInfo?.action);
+        websocket.send(
+          JSON.stringify({
+            event: "sendToPlugin",
+            action: actionInfo.action,
+            context: actionInfo.context,
+            payload: { event: "list", kind: kind },
+          }),
+        );
+      }
+
+      function fillSelect(items) {
+        const sel = document.getElementById("entity");
+        sel.innerHTML = "";
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = items.length ? "Select…" : "No items";
+        sel.appendChild(blank);
+        for (const item of items) {
+          const opt = document.createElement("option");
+          opt.value = item.id;
+          opt.textContent = item.label;
+          if (settings.entityId === item.id) opt.selected = true;
+          sel.appendChild(opt);
+        }
+      }
+
+      function save() {
+        const sel = document.getElementById("entity");
+        const id = sel.value;
+        const label = sel.options[sel.selectedIndex]?.textContent || "";
+        settings = { entityId: id, entityLabel: id ? label : "" };
+        websocket.send(
+          JSON.stringify({
+            event: "setSettings",
+            context: actionInfo.context,
+            payload: settings,
+          }),
+        );
+      }
+
+      document.getElementById("entity").addEventListener("change", save);
+      window.connectElgatoStreamDeckSocket = connectElgatoStreamDeckSocket;
+    </script>
+  </body>
+</html>
