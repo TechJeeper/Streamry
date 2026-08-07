@@ -548,6 +548,12 @@ code {
   font-size: 0.92rem;
 }
 
+.footer-links {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
 .footer-inner a {
   color: var(--brand-soft);
   text-decoration: none;
