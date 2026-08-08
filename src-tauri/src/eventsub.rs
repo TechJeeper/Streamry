@@ -73,18 +73,23 @@ pub async fn run_eventsub_loop(
             SessionOutcome::Retry(err) => {
                 eprintln!("EventSub: {err}");
                 url = EVENTSUB_WS.to_string();
+                // Auth/setup problems: wait longer so Activity isn't spammed every 5s.
+                let wait = if err.contains("channel:read:ads")
+                    || err.contains("Authorize")
+                    || err.contains("streamer")
+                {
+                    60
+                } else {
+                    5
+                };
                 tokio::select! {
                     _ = stop.changed() => {
                         if *stop.borrow() {
                             break;
                         }
                     }
-                    _ = tokio::time::sleep(Duration::from_secs(5)) => {}
+                    _ = tokio::time::sleep(Duration::from_secs(wait)) => {}
                 }
-            }
-            SessionOutcome::Fatal(err) => {
-                eprintln!("EventSub stopped: {err}");
-                break;
             }
         }
     }
@@ -96,7 +101,6 @@ enum SessionOutcome {
     Stop,
     Reconnect(String),
     Retry(String),
-    Fatal(String),
 }
 
 async fn run_session(
@@ -107,6 +111,23 @@ async fn run_session(
     url: &str,
     ad_gen: Arc<AtomicU64>,
 ) -> SessionOutcome {
+    // Resolve auth before connecting — Twitch only allows ~10s after welcome to subscribe.
+    let ads_creds = match resolve_ads_token(client_id, channel).await {
+        Ok(v) => v,
+        Err(e) => {
+            crate::activity::push(
+                app,
+                "automation",
+                "Ad triggers",
+                e.clone(),
+                "/settings",
+                None,
+            );
+            // Keep retrying so authorizing mid-session can recover without a full bot reconnect.
+            return SessionOutcome::Retry(e);
+        }
+    };
+
     let (ws, _) = match connect_async(url).await {
         Ok(v) => v,
         Err(e) => return SessionOutcome::Retry(format!("connect failed: {e}")),
@@ -148,11 +169,19 @@ async fn run_session(
                                         return SessionOutcome::Retry(format!("welcome payload: {e}"));
                                     }
                                 };
-                                match subscribe_ad_break(app, client_id, channel, &session.session.id).await {
+                                match subscribe_ad_break(
+                                    app,
+                                    client_id,
+                                    &ads_creds.0,
+                                    &ads_creds.1,
+                                    &session.session.id,
+                                )
+                                .await
+                                {
                                     Ok(()) => subscribed = true,
                                     Err(e) => {
                                         let _ = write.close().await;
-                                        return SessionOutcome::Fatal(e);
+                                        return SessionOutcome::Retry(e);
                                     }
                                 }
                             }
@@ -234,24 +263,10 @@ async fn resolve_ads_token(client_id: &str, channel: &str) -> Result<(String, St
 async fn subscribe_ad_break(
     app: &AppHandle,
     client_id: &str,
-    channel: &str,
+    token: &str,
+    broadcaster_id: &str,
     session_id: &str,
 ) -> Result<(), String> {
-    let (token, broadcaster_id) = match resolve_ads_token(client_id, channel).await {
-        Ok(v) => v,
-        Err(e) => {
-            crate::activity::push(
-                app,
-                "automation",
-                "Ad triggers",
-                e.clone(),
-                "/settings",
-                None,
-            );
-            return Err(e);
-        }
-    };
-
     let client = reqwest::Client::new();
     let body = serde_json::json!({
         "type": "channel.ad_break.begin",

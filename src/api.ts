@@ -49,6 +49,7 @@ export const api = {
   upsertAutomation: (auto: Automation) =>
     invoke<Automation>("upsert_automation", { auto }),
   deleteAutomation: (id: string) => invoke("delete_automation", { id }),
+  testAutomation: (id: string) => invoke("test_automation", { id }),
   getOverlayInfo: () => invoke<OverlayInfo>("get_overlay_info"),
   listMedia: () => invoke<MediaClip[]>("list_media"),
   importMedia: (path: string, name?: string) =>

@@ -298,4 +298,6 @@ pub struct IncomingChat {
     pub is_vip: bool,
     pub is_sub: bool,
     pub is_broadcaster: bool,
+    /// Bits cheered in this message (0 if not a cheer).
+    pub bits: u64,
 }

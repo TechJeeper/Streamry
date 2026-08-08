@@ -99,6 +99,24 @@ export function Automations() {
                     <td>{actionLabel(a)}</td>
                     <td className="col-actions">
                       <div className="btn-row">
+                        <button
+                          className="btn btn-ghost"
+                          disabled={!a.enabled}
+                          title={
+                            a.enabled
+                              ? "Run this automation’s action now"
+                              : "Enable the automation to test it"
+                          }
+                          onClick={async () => {
+                            try {
+                              await api.testAutomation(a.id);
+                            } catch (e) {
+                              window.alert(String(e));
+                            }
+                          }}
+                        >
+                          Test
+                        </button>
                         <button className="btn btn-ghost" onClick={() => setEdit(a)}>
                           Edit
                         </button>

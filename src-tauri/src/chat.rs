@@ -80,6 +80,11 @@ pub async fn run_chat_loop(
                         "message": chat.message,
                     }));
 
+                    // Bits arrive on PRIVMSG (bits= tag), not USERNOTICE.
+                    if chat.bits > 0 {
+                        engine::fire_automations(&app, "cheer", &chat.display);
+                    }
+
                     if let Some(reply) = engine::handle_message(
                         &app,
                         &chat,
@@ -152,6 +157,10 @@ fn parse_privmsg(line: &str) -> Option<IncomingChat> {
         is_vip,
         is_sub,
         is_broadcaster,
+        bits: tags
+            .get("bits")
+            .and_then(|b| b.parse::<u64>().ok())
+            .unwrap_or(0),
     })
 }
 
@@ -176,9 +185,10 @@ fn parse_usernotice(line: &str) -> Option<UserNoticeEvent> {
     };
     let msg_id = tags.get("msg-id")?.clone();
     let kind = match msg_id.as_str() {
-        "sub" | "resub" | "subgift" | "submysterygift" => "subscribe",
+        "sub" | "resub" | "subgift" | "submysterygift" | "anonsubgift"
+        | "giftpaidupgrade" | "primepaidupgrade" | "anongiftpaidupgrade" => "subscribe",
         "raid" => "raid",
-        "bits" | "cheer" => "cheer",
+        "bits" | "cheer" | "bitsbadgetier" => "cheer",
         other => other,
     }
     .to_string();

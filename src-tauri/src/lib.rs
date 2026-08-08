@@ -615,6 +615,11 @@ fn delete_automation(state: State<'_, AppState>, id: String) -> Result<(), Strin
     db::delete_automation(&state.db.lock(), &id)
 }
 
+#[tauri::command]
+fn test_automation(app: AppHandle, id: String) -> Result<(), String> {
+    engine::run_automation_by_id(&app, &id)
+}
+
 // ---- Media / OBS overlay ----
 #[tauri::command]
 fn get_overlay_info(state: State<'_, AppState>) -> OverlayInfo {
@@ -1014,6 +1019,7 @@ pub fn run() {
             list_automations,
             upsert_automation,
             delete_automation,
+            test_automation,
             get_overlay_info,
             list_media,
             import_media,

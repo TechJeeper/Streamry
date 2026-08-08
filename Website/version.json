@@ -1,5 +1,5 @@
-{
-  "version": "0.1.6",
+﻿{
+  "version": "0.1.7",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "Fix ad break automations — reliable EventSub parsing, clearer auth errors, and streamer ads login for bot mode."
+  "notes": "Automation reliability — cheers fire from chat bits, clearer event Activity logs, Test button, more reliable ad EventSub."
 }

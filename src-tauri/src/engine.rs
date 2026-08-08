@@ -152,12 +152,34 @@ pub fn fire_automations(app: &AppHandle, trigger: &str, user: &str) {
         Ok(a) => a,
         Err(_) => return,
     };
+    let mut fired = 0usize;
     for auto in autos.into_iter().filter(|a| a.enabled) {
-        let matches = auto.trigger_type == trigger
-            || (auto.trigger_type == "subscribe" && trigger == "subscribe");
-        if matches {
+        if auto.trigger_type == trigger {
             run_automation(app, &auto, user);
+            fired += 1;
         }
+    }
+    // Known event types: always leave a breadcrumb so missing automations are obvious.
+    if fired == 0
+        && matches!(
+            trigger,
+            "subscribe"
+                | "raid"
+                | "cheer"
+                | "ad_start"
+                | "ad_end"
+                | "stream_online"
+                | "stream_offline"
+        )
+    {
+        crate::activity::push(
+            app,
+            "automation",
+            format!("Event: {trigger}"),
+            format!("Received for {user}, but no enabled automation matches."),
+            "/automations",
+            None,
+        );
     }
 }
 
@@ -207,6 +229,7 @@ pub fn run_command_by_id(app: &AppHandle, id: &str) -> Result<(), String> {
         is_vip: true,
         is_sub: true,
         is_broadcaster: true,
+        bits: 0,
     };
 
     let media_note = if let Some(media_id) = cmd.media_id.as_ref().filter(|s| !s.is_empty()) {
@@ -277,11 +300,21 @@ pub fn run_automation(app: &AppHandle, auto: &Automation, user: &str) {
                 is_vip: false,
                 is_sub: false,
                 is_broadcaster: false,
+                bits: 0,
             };
             let msg = render_vars(&auto.action_payload, &dummy, &channel, None, &custom_vars);
             let tx = state.chat_tx.lock().clone();
             if let Some(tx) = tx {
                 let _ = tx.send(ChatOutbound::Message(msg));
+            } else {
+                crate::activity::push(
+                    app,
+                    "automation",
+                    auto.name.clone(),
+                    "Skipped chat action — bot is not connected.",
+                    "/automations",
+                    Some(auto.id.clone()),
+                );
             }
         }
         "enable_command" | "disable_command" => {
@@ -457,6 +490,7 @@ pub async fn run_scheduler(app: AppHandle) {
                     is_vip: false,
                     is_sub: false,
                     is_broadcaster: false,
+                    bits: 0,
                 };
                 let msg = render_vars(&timer.message, &dummy, &channel, None, &custom_vars);
                 let _ = tx.send(ChatOutbound::Message(msg));
