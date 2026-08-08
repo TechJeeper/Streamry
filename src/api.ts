@@ -24,6 +24,7 @@ export const api = {
   saveSettings: (settings: AppSettings) => invoke("save_settings", { settings }),
   startDeviceLogin: (scopes: string[]) =>
     invoke<DeviceCode>("start_device_login", { scopes }),
+  startStreamerAdsLogin: () => invoke<DeviceCode>("start_streamer_ads_login"),
   logout: () => invoke("logout"),
   connectBot: () => invoke("connect_bot"),
   disconnectBot: () => invoke("disconnect_bot"),

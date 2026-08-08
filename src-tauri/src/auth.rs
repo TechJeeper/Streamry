@@ -6,6 +6,9 @@ use crate::models::{DeviceCodeResponse, TwitchUser};
 const SERVICE: &str = "Streamry";
 const ACCESS: &str = "twitch_access_token";
 const REFRESH: &str = "twitch_refresh_token";
+/// Broadcaster token used for ad EventSub when the chat bot is a separate account.
+const ADS_ACCESS: &str = "twitch_ads_access_token";
+const ADS_REFRESH: &str = "twitch_ads_refresh_token";
 
 #[derive(Debug, Deserialize)]
 struct DeviceStart {
@@ -119,7 +122,40 @@ pub fn clear_tokens() -> Result<(), String> {
     if let Ok(e) = Entry::new(SERVICE, REFRESH) {
         let _ = e.delete_credential();
     }
+    let _ = clear_ads_tokens();
     Ok(())
+}
+
+pub fn store_ads_tokens(token: &TokenResponse) -> Result<(), String> {
+    Entry::new(SERVICE, ADS_ACCESS)
+        .map_err(|e| e.to_string())?
+        .set_password(&token.access_token)
+        .map_err(|e| e.to_string())?;
+    if let Some(refresh) = &token.refresh_token {
+        Entry::new(SERVICE, ADS_REFRESH)
+            .map_err(|e| e.to_string())?
+            .set_password(refresh)
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+pub fn clear_ads_tokens() -> Result<(), String> {
+    if let Ok(e) = Entry::new(SERVICE, ADS_ACCESS) {
+        let _ = e.delete_credential();
+    }
+    if let Ok(e) = Entry::new(SERVICE, ADS_REFRESH) {
+        let _ = e.delete_credential();
+    }
+    Ok(())
+}
+
+pub fn has_ads_tokens() -> bool {
+    Entry::new(SERVICE, ADS_ACCESS)
+        .ok()
+        .and_then(|e| e.get_password().ok())
+        .map(|s| !s.is_empty())
+        .unwrap_or(false)
 }
 
 pub async fn load_access_token(client_id: &str) -> Result<String, String> {
@@ -140,15 +176,62 @@ pub async fn load_access_token(client_id: &str) -> Result<String, String> {
     Ok(token.access_token)
 }
 
-async fn validate_token(token: &str) -> bool {
+/// Broadcaster user token for `channel.ad_break.begin` (may be separate from the chat bot).
+pub async fn load_ads_access_token(client_id: &str) -> Result<String, String> {
+    let access = Entry::new(SERVICE, ADS_ACCESS)
+        .map_err(|e| e.to_string())?
+        .get_password()
+        .map_err(|_| "No streamer ads authorization yet.".to_string())?;
+
+    if validate_token(&access).await {
+        return Ok(access);
+    }
+    let refresh = Entry::new(SERVICE, ADS_REFRESH)
+        .map_err(|e| e.to_string())?
+        .get_password()
+        .map_err(|_| {
+            "Streamer ads session expired. Authorize the streamer again in Settings.".to_string()
+        })?;
+    let token = refresh_token(client_id, &refresh).await?;
+    store_ads_tokens(&token)?;
+    Ok(token.access_token)
+}
+
+#[derive(Debug, Clone)]
+pub struct TokenInfo {
+    pub user_id: String,
+    pub login: String,
+    pub scopes: Vec<String>,
+}
+
+pub async fn token_info(token: &str) -> Result<TokenInfo, String> {
     let client = reqwest::Client::new();
-    client
+    let resp = client
         .get("https://id.twitch.tv/oauth2/validate")
         .header("Authorization", format!("OAuth {token}"))
         .send()
         .await
-        .map(|r| r.status().is_success())
-        .unwrap_or(false)
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err("Twitch session invalid.".into());
+    }
+    #[derive(Deserialize)]
+    struct Validate {
+        user_id: String,
+        login: String,
+        #[serde(default)]
+        scopes: Vec<String>,
+    }
+    let v: Validate = resp.json().await.map_err(|e| e.to_string())?;
+    Ok(TokenInfo {
+        user_id: v.user_id,
+        login: v.login,
+        scopes: v.scopes,
+    })
+}
+
+async fn validate_token(token: &str) -> bool {
+    token_info(token).await.is_ok()
 }
 
 async fn refresh_token(client_id: &str, refresh: &str) -> Result<TokenResponse, String> {

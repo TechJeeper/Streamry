@@ -108,6 +108,7 @@ fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
             .and_then(|s| s.parse().ok())
             .unwrap_or(control::DEFAULT_PORT),
         stream_deck_token: db::get_setting(&db, "stream_deck_token")?.unwrap_or_default(),
+        streamer_ads_authorized: auth::has_ads_tokens(),
     })
 }
 
@@ -229,6 +230,76 @@ async fn start_device_login(
             }
             Err(e) => {
                 let _ = app2.emit("auth-error", e);
+            }
+        }
+    });
+
+    Ok(DeviceCodeResponse {
+        device_code: device.device_code,
+        user_code,
+        verification_uri,
+        interval,
+        expires_in: device.expires_in,
+    })
+}
+
+/// Authorize the streamer account for ad-break EventSub (used when chat runs as a separate bot).
+#[tauri::command]
+async fn start_streamer_ads_login(
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<DeviceCodeResponse, String> {
+    let (client_id, channel) = {
+        let db = state.db.lock();
+        (
+            db::get_setting(&db, "client_id")?
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| {
+                    "Add your Twitch Client ID in Settings first (from dev.twitch.tv).".to_string()
+                })?,
+            db::get_setting(&db, "channel")?.unwrap_or_default(),
+        )
+    };
+    if channel.is_empty() {
+        return Err("Set your channel (streamer username) first.".into());
+    }
+
+    let scopes = vec!["channel:read:ads".to_string()];
+    let device = auth::request_device_code(&client_id, &scopes).await?;
+    let user_code = device.user_code.clone();
+    let device_code = device.device_code.clone();
+    let interval = device.interval.max(1);
+    let verification_uri = device.verification_uri.clone();
+    let channel_expect = channel.to_lowercase();
+
+    let app2 = app.clone();
+    let client_id2 = client_id.clone();
+    tokio::spawn(async move {
+        match auth::poll_device_token(&client_id2, &device_code, interval).await {
+            Ok(token) => match auth::fetch_user(&client_id2, &token.access_token).await {
+                Ok(user) => {
+                    if !user.login.eq_ignore_ascii_case(&channel_expect) {
+                        let _ = app2.emit(
+                            "ads-auth-error",
+                            format!(
+                                "Authorized as “{}”, but channel is “{channel_expect}”. Log into Twitch as the streamer and try again.",
+                                user.login
+                            ),
+                        );
+                        return;
+                    }
+                    if let Err(e) = auth::store_ads_tokens(&token) {
+                        let _ = app2.emit("ads-auth-error", e);
+                        return;
+                    }
+                    let _ = app2.emit("ads-auth-success", user);
+                }
+                Err(e) => {
+                    let _ = app2.emit("ads-auth-error", e);
+                }
+            },
+            Err(e) => {
+                let _ = app2.emit("ads-auth-error", e);
             }
         }
     });
@@ -921,6 +992,7 @@ pub fn run() {
             get_settings,
             save_settings,
             start_device_login,
+            start_streamer_ads_login,
             logout,
             connect_bot,
             disconnect_bot,

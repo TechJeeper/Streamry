@@ -21,6 +21,8 @@ export type AppSettings = {
   streamDeckControlEnabled?: boolean;
   streamDeckControlPort?: number;
   streamDeckToken?: string;
+  /** Separate streamer OAuth for ad breaks when using a bot account. */
+  streamerAdsAuthorized?: boolean;
 };
 
 export type StreamDeckStatus = {

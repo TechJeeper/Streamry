@@ -25,7 +25,9 @@ export function Settings() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [device, setDevice] = useState<DeviceCode | null>(null);
+  const [adsDevice, setAdsDevice] = useState<DeviceCode | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
+  const [adsAuthBusy, setAdsAuthBusy] = useState(false);
   const [resetStep, setResetStep] = useState<0 | 1 | 2>(0);
   const [resetConfirm, setResetConfirm] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
@@ -76,6 +78,27 @@ export function Settings() {
         setAuthBusy(false);
         setDevice(null);
       }),
+      listen("ads-auth-success", async () => {
+        const s = await api.getSettings();
+        setSettings(s);
+        setAdsDevice(null);
+        setAdsAuthBusy(false);
+        setErr("");
+        setMsg(
+          `Streamer ads authorized for ${s.channel}. Reconnect the bot so ad triggers arm.`,
+        );
+        try {
+          await api.disconnectBot();
+          await api.connectBot();
+        } catch {
+          /* optional */
+        }
+      }),
+      listen<string>("ads-auth-error", (e) => {
+        setErr(String(e.payload));
+        setAdsAuthBusy(false);
+        setAdsDevice(null);
+      }),
     ];
     return () => {
       unsubs.forEach((p) => p.then((u) => u()));
@@ -102,6 +125,22 @@ export function Settings() {
     } catch (e) {
       setErr(String(e));
       setAuthBusy(false);
+    }
+  }
+
+  async function startStreamerAdsAuth() {
+    if (!settings) return;
+    setAdsAuthBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await persist(settings);
+      const d = await api.startStreamerAdsLogin();
+      setAdsDevice(d);
+      await openUrl(d.verificationUri);
+    } catch (e) {
+      setErr(String(e));
+      setAdsAuthBusy(false);
     }
   }
 
@@ -205,6 +244,68 @@ export function Settings() {
               Separate bot mode: authorize while logged into Twitch as your{" "}
               <strong>bot</strong> account — not {settings.channel || "your channel"}.
               Switch accounts in the browser first if needed.
+            </p>
+          )}
+          {settings.accountMode === "bot" && (
+            <div style={{ marginTop: 16 }}>
+              <h4 style={{ margin: "0 0 8px" }}>Ad break triggers</h4>
+              <p className="hint" style={{ marginTop: 0 }}>
+                Twitch only allows the <strong>streamer</strong> account to
+                listen for midroll ads. Authorize {settings.channel || "your channel"}{" "}
+                separately (bot stays used for chat).
+              </p>
+              <div className="btn-row">
+                <button
+                  className="btn btn-accent"
+                  disabled={adsAuthBusy || !settings.clientId || !settings.channel}
+                  onClick={startStreamerAdsAuth}
+                >
+                  {adsDevice
+                    ? "Waiting…"
+                    : settings.streamerAdsAuthorized
+                      ? "Re-authorize streamer for ads"
+                      : "Authorize streamer for ads"}
+                </button>
+              </div>
+              {settings.streamerAdsAuthorized && !adsDevice && (
+                <p className="hint" style={{ marginTop: 8, color: "var(--ok)" }}>
+                  Streamer ads authorization is saved.
+                </p>
+              )}
+              {adsDevice && (
+                <div style={{ marginTop: 14 }}>
+                  <p className="hint" style={{ marginBottom: 8 }}>
+                    Log into Twitch as <strong>{settings.channel}</strong>, enter
+                    this code, then Authorize.
+                  </p>
+                  <div className="code-box">{adsDevice.userCode}</div>
+                  <div className="btn-row" style={{ marginTop: 10 }}>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => openUrl(adsDevice.verificationUri)}
+                    >
+                      Open Twitch again
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => {
+                        setAdsDevice(null);
+                        setAdsAuthBusy(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {settings.accountMode !== "bot" && (
+            <p className="hint" style={{ marginTop: 12 }}>
+              Ad break automations need a fresh Twitch connect after updating —
+              use <strong>Connect with Twitch</strong> so{" "}
+              <code>channel:read:ads</code> is granted. Only midroll ads fire
+              (Run Ad / Ads Manager), not every preroll.
             </p>
           )}
           {device && (

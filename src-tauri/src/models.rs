@@ -18,6 +18,9 @@ pub struct AppSettings {
     pub stream_deck_control_port: u16,
     #[serde(default)]
     pub stream_deck_token: String,
+    /// True when a separate streamer token for ad EventSub is stored (bot mode).
+    #[serde(default)]
+    pub streamer_ads_authorized: bool,
 }
 
 fn default_stream_deck_port() -> u16 {

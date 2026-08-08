@@ -1,5 +1,5 @@
 {
-  "version": "0.1.5",
+  "version": "0.1.6",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "Ad break automations — trigger chat, media, or commands when ads start and when they end."
+  "notes": "Fix ad break automations — reliable EventSub parsing, clearer auth errors, and streamer ads login for bot mode."
 }

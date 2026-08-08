@@ -40,15 +40,6 @@ struct SessionInfo {
     reconnect_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-struct AdBreakEvent {
-    duration_seconds: u64,
-    #[serde(default)]
-    broadcaster_user_name: String,
-    #[serde(default)]
-    broadcaster_user_login: String,
-}
-
 /// Listen for `channel.ad_break.begin` while the bot is connected.
 /// Twitch has no ad-end EventSub; we schedule `ad_end` from `duration_seconds`.
 pub async fn run_eventsub_loop(
@@ -198,14 +189,68 @@ async fn run_session(
     }
 }
 
+/// Prefer a dedicated streamer ads token (bot mode); else the main token if it is the broadcaster.
+async fn resolve_ads_token(client_id: &str, channel: &str) -> Result<(String, String), String> {
+    let channel_lc = channel.to_lowercase();
+
+    if let Ok(token) = auth::load_ads_access_token(client_id).await {
+        match auth::token_info(&token).await {
+            Ok(info) if info.login.eq_ignore_ascii_case(&channel_lc) => {
+                if !info.scopes.iter().any(|s| s == "channel:read:ads") {
+                    return Err(
+                        "Streamer ads login is missing channel:read:ads. Authorize the streamer again in Settings."
+                            .into(),
+                    );
+                }
+                return Ok((token, info.user_id));
+            }
+            Ok(info) => {
+                return Err(format!(
+                    "Ads authorization is for “{}”, but the channel is “{channel}”. Authorize while logged in as the streamer.",
+                    info.login
+                ));
+            }
+            Err(_) => {}
+        }
+    }
+
+    let token = auth::load_access_token(client_id).await?;
+    let info = auth::token_info(&token).await?;
+    if !info.login.eq_ignore_ascii_case(&channel_lc) {
+        return Err(format!(
+            "Ad triggers need the streamer’s Twitch login. Chat is connected as “{}”. In Settings, use “Authorize streamer for ads” while logged into Twitch as {channel}.",
+            info.login
+        ));
+    }
+    if !info.scopes.iter().any(|s| s == "channel:read:ads") {
+        return Err(
+            "Missing channel:read:ads. Reconnect Twitch in Settings so the ads permission is granted."
+                .into(),
+        );
+    }
+    Ok((token, info.user_id))
+}
+
 async fn subscribe_ad_break(
     app: &AppHandle,
     client_id: &str,
     channel: &str,
     session_id: &str,
 ) -> Result<(), String> {
-    let token = auth::load_access_token(client_id).await?;
-    let broadcaster_id = resolve_user_id(client_id, &token, channel).await?;
+    let (token, broadcaster_id) = match resolve_ads_token(client_id, channel).await {
+        Ok(v) => v,
+        Err(e) => {
+            crate::activity::push(
+                app,
+                "automation",
+                "Ad triggers",
+                e.clone(),
+                "/settings",
+                None,
+            );
+            return Err(e);
+        }
+    };
 
     let client = reqwest::Client::new();
     let body = serde_json::json!({
@@ -230,76 +275,97 @@ async fn subscribe_ad_break(
     let status = resp.status();
     let text = resp.text().await.unwrap_or_default();
     if status.is_success() || status.as_u16() == 409 {
+        crate::activity::push(
+            app,
+            "automation",
+            "Ad triggers",
+            "Listening for midroll ad breaks (start + end).",
+            "/automations",
+            None,
+        );
         return Ok(());
     }
 
     let hint = if text.contains("authorization") || status.as_u16() == 403 {
-        " Needs channel:read:ads from the broadcaster account — reconnect Twitch in Settings (streamer mode)."
+        " Needs channel:read:ads from the broadcaster account — reconnect Twitch (or Authorize streamer for ads) in Settings."
     } else {
         ""
     };
-    crate::activity::push(
-        app,
-        "automation",
-        "Ad triggers",
-        format!("Could not subscribe to ad breaks ({status}).{hint}"),
-        "/automations",
-        None,
-    );
+    let msg = format!("Could not subscribe to ad breaks ({status}).{hint}");
+    crate::activity::push(app, "automation", "Ad triggers", msg.clone(), "/settings", None);
     Err(format!("subscribe ad_break failed ({status}): {text}"))
 }
 
-async fn resolve_user_id(client_id: &str, token: &str, login: &str) -> Result<String, String> {
-    let client = reqwest::Client::new();
-    let url = format!(
-        "https://api.twitch.tv/helix/users?login={}",
-        urlencoding::encode(&login.to_lowercase())
-    );
-    let resp = client
-        .get(&url)
-        .header("Client-Id", client_id)
-        .header("Authorization", format!("Bearer {token}"))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err("Failed to resolve channel user id.".into());
+fn json_u64(v: &serde_json::Value) -> Option<u64> {
+    match v {
+        serde_json::Value::Number(n) => n
+            .as_u64()
+            .or_else(|| n.as_i64().and_then(|i| u64::try_from(i).ok()))
+            .or_else(|| n.as_f64().map(|f| f as u64)),
+        serde_json::Value::String(s) => s.trim().parse().ok(),
+        _ => None,
     }
-    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    json.pointer("/data/0/id")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| format!("Channel “{login}” not found on Twitch."))
+}
+
+fn json_str(v: &serde_json::Value) -> Option<String> {
+    v.as_str().map(|s| s.to_string())
 }
 
 fn handle_ad_break_begin(app: &AppHandle, payload: &serde_json::Value, ad_gen: Arc<AtomicU64>) {
     let event = match payload.get("event") {
         Some(e) => e,
-        None => return,
-    };
-    let parsed: AdBreakEvent = match serde_json::from_value(event.clone()) {
-        Ok(p) => p,
-        Err(_) => return,
-    };
-
-    let user = if !parsed.broadcaster_user_name.is_empty() {
-        parsed.broadcaster_user_name.clone()
-    } else if !parsed.broadcaster_user_login.is_empty() {
-        parsed.broadcaster_user_login.clone()
-    } else {
-        let state = app.state::<AppState>();
-        let channel = state
-            .runtime
-            .lock()
-            .channel
-            .clone()
-            .unwrap_or_else(|| "channel".into());
-        channel
+        None => {
+            eprintln!("EventSub ad_break: notification missing event field: {payload}");
+            crate::activity::push(
+                app,
+                "automation",
+                "Ad triggers",
+                "Received an ad event with no payload — ignored.",
+                "/automations",
+                None,
+            );
+            return;
+        }
     };
 
+    // Twitch docs show duration_seconds as a string; live payloads may be numbers.
+    let duration = event
+        .get("duration_seconds")
+        .and_then(json_u64)
+        .unwrap_or(60)
+        .max(1);
+
+    let user = event
+        .get("broadcaster_user_name")
+        .and_then(json_str)
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            event
+                .get("broadcaster_user_login")
+                .and_then(json_str)
+                .filter(|s| !s.is_empty())
+        })
+        .unwrap_or_else(|| {
+            let state = app.state::<AppState>();
+            let channel = state
+                .runtime
+                .lock()
+                .channel
+                .clone()
+                .unwrap_or_else(|| "channel".into());
+            channel
+        });
+
+    crate::activity::push(
+        app,
+        "automation",
+        "Ad break",
+        format!("Started ({duration}s) — running ad_start automations"),
+        "/automations",
+        None,
+    );
     engine::fire_automations(app, "ad_start", &user);
 
-    let duration = parsed.duration_seconds.max(1);
     let gen = ad_gen.fetch_add(1, Ordering::SeqCst) + 1;
     let app2 = app.clone();
     let user2 = user;
@@ -308,6 +374,14 @@ fn handle_ad_break_begin(app: &AppHandle, payload: &serde_json::Value, ad_gen: A
         if ad_gen.load(Ordering::SeqCst) != gen {
             return; // a newer ad break replaced this end timer
         }
+        crate::activity::push(
+            &app2,
+            "automation",
+            "Ad break",
+            "Ended — running ad_end automations",
+            "/automations",
+            None,
+        );
         engine::fire_automations(&app2, "ad_end", &user2);
     });
 }
