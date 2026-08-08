@@ -184,6 +184,10 @@ fn map_se_trigger(raw: &str) -> Option<&'static str> {
         "cheer" | "cheers" | "bits" | "cheerbits" => Some("cheer"),
         "streamonline" | "online" | "live" | "golive" | "liveannouncement" => Some("stream_online"),
         "streamoffline" | "offline" | "endstream" => Some("stream_offline"),
+        "adstart" | "adbreak" | "adbreakbegin" | "commercial" | "commercialstart" => {
+            Some("ad_start")
+        }
+        "adend" | "adbreakend" | "commercialend" => Some("ad_end"),
         _ => None,
     }
 }

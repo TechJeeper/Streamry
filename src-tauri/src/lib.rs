@@ -305,7 +305,15 @@ async fn start_bot_connection(state: &AppState, app: AppHandle) -> Result<(), St
         bot_login
     };
     let bot_login_for_status = bot_login2.clone();
+    let client_id_es = client_id.clone();
+    let channel_es = channel.clone();
+    let stop_rx_es = stop_rx.clone();
 
+    tokio::spawn(async move {
+        eventsub::run_eventsub_loop(app2, client_id_es, channel_es, stop_rx_es).await;
+    });
+
+    let app2 = app.clone();
     tokio::spawn(async move {
         let result = chat::run_chat_loop(
             app2.clone(),

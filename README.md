@@ -9,8 +9,8 @@ Easy, local Twitch bot for streamers — commands, timers, giveaways, automation
 
 | Platform | Installer |
 | -------- | --------- |
-| Windows 10/11 (x64) | [Streamry_0.1.4_x64-setup.exe](Website/downloads/Streamry_0.1.4_x64-setup.exe) |
-| macOS (Apple silicon + Intel) | [Streamry_0.1.4_universal.dmg](Website/downloads/Streamry_0.1.4_universal.dmg) |
+| Windows 10/11 (x64) | [Streamry_0.1.5_x64-setup.exe](Website/downloads/Streamry_0.1.5_x64-setup.exe) |
+| macOS (Apple silicon + Intel) | [Streamry_0.1.5_universal.dmg](Website/downloads/Streamry_0.1.5_universal.dmg) |
 
 Or use the [downloads page](https://techjeeper.github.io/Streamry/downloads.html).
 

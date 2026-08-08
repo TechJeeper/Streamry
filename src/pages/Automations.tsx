@@ -143,6 +143,8 @@ export function Automations() {
                 <option value="subscribe">Subscribe / resub</option>
                 <option value="raid">Raid</option>
                 <option value="cheer">Cheer / bits</option>
+                <option value="ad_start">Ad break starts</option>
+                <option value="ad_end">Ad break ends</option>
                 <option value="stream_online">Stream goes live</option>
                 <option value="stream_offline">Stream goes offline</option>
               </select>

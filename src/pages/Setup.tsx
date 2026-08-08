@@ -9,6 +9,7 @@ const SCOPES = [
   "chat:edit",
   "user:read:chat",
   "channel:read:subscriptions",
+  "channel:read:ads",
   "moderator:read:followers",
 ];
 

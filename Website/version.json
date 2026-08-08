@@ -1,5 +1,5 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.5",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "Stream Deck integration — one-click plugin install from Settings, with keys for commands, automations, giveaways, media, chat, and bot connect/disconnect."
+  "notes": "Ad break automations — trigger chat, media, or commands when ads start and when they end."
 }

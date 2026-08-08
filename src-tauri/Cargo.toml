@@ -1,6 +1,6 @@
 [package]
 name = "streamry"
-version = "0.1.4"
+version = "0.1.5"
 description = "Easy local Twitch bot for streamers — commands, timers, giveaways, and automations"
 authors = ["Streamry"]
 edition = "2021"
@@ -38,3 +38,4 @@ axum = { version = "0.8", features = ["ws"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 tower-http = { version = "0.6", features = ["cors"] }
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }

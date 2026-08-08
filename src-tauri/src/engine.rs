@@ -142,14 +142,21 @@ pub fn render_vars(
 }
 
 pub fn handle_usernotice(app: &AppHandle, event: &crate::chat::UserNoticeEvent) {
+    fire_automations(app, &event.kind, &event.display);
+}
+
+/// Run every enabled automation whose trigger matches `trigger`.
+pub fn fire_automations(app: &AppHandle, trigger: &str, user: &str) {
     let state = app.state::<AppState>();
     let autos = match db::list_automations(&state.db.lock()) {
         Ok(a) => a,
         Err(_) => return,
     };
     for auto in autos.into_iter().filter(|a| a.enabled) {
-        if auto.trigger_type == event.kind || auto.trigger_type == "subscribe" && event.kind == "subscribe" {
-            run_automation(app, &auto, &event.display);
+        let matches = auto.trigger_type == trigger
+            || (auto.trigger_type == "subscribe" && trigger == "subscribe");
+        if matches {
+            run_automation(app, &auto, user);
         }
     }
 }
@@ -519,11 +526,7 @@ async fn check_live_status(app: &AppHandle) {
                 // stream online/offline automations
                 let trigger = if live { "stream_online" } else { "stream_offline" };
                 drop(rt);
-                if let Ok(autos) = db::list_automations(&state.db.lock()) {
-                    for auto in autos.into_iter().filter(|a| a.enabled && a.trigger_type == trigger) {
-                        run_automation(app, &auto, &channel);
-                    }
-                }
+                fire_automations(app, trigger, &channel);
             }
         }
     }
