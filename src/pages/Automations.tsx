@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { api } from "../api";
 import { useOpenFromQuery } from "../hooks/useOpenFromQuery";
 import { ObsBrowserSourceBanner } from "./Media";
-import type { Automation, MediaClip } from "../types";
+import type { Automation, MediaClip, RuntimeStatus } from "../types";
 
 const blank = (): Automation => ({
   id: "",
@@ -18,21 +19,40 @@ export function Automations() {
   const [items, setItems] = useState<Automation[]>([]);
   const [media, setMedia] = useState<MediaClip[]>([]);
   const [edit, setEdit] = useState<Automation | null>(null);
+  const [status, setStatus] = useState<RuntimeStatus | null>(null);
 
   async function load() {
-    const [autos, clips] = await Promise.all([
+    const [autos, clips, st] = await Promise.all([
       api.listAutomations(),
       api.listMedia().catch(() => [] as MediaClip[]),
+      api.getStatus().catch(() => null),
     ]);
     setItems(autos);
     setMedia(clips);
+    if (st) setStatus(st);
   }
   useEffect(() => {
     load();
   }, []);
 
+  useEffect(() => {
+    const unsubs = [
+      listen("status-changed", () => {
+        api.getStatus().then(setStatus).catch(() => {});
+      }),
+    ];
+    return () => {
+      unsubs.forEach((p) => p.then((u) => u()));
+    };
+  }, []);
+
   const openEdit = useCallback((a: Automation) => setEdit(a), []);
   useOpenFromQuery(items, openEdit);
+
+  const hasAdAutos = items.some(
+    (a) =>
+      a.enabled && (a.triggerType === "ad_start" || a.triggerType === "ad_end"),
+  );
 
   function actionLabel(a: Automation) {
     if (a.actionType === "play_media") {
@@ -71,6 +91,22 @@ export function Automations() {
       </div>
 
       <ObsBrowserSourceBanner />
+
+      {hasAdAutos && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <strong>Ad break listener</strong>
+          <p className="hint" style={{ margin: "6px 0 0" }}>
+            {status?.adsListening
+              ? "Armed — listening for midrolls (Run Ad / Ads Manager). Activity logs start and end."
+              : status?.adsError
+                ? status.adsError
+                : status?.connected
+                  ? "Not armed yet — check Activity for auth errors, or reconnect the bot."
+                  : "Connect the bot to arm ad triggers."}{" "}
+            Only midrolls fire — not viewer prerolls.
+          </p>
+        </div>
+      )}
 
       <div className="panel">
         {items.length === 0 ? (

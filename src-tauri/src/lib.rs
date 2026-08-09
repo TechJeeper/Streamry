@@ -50,6 +50,12 @@ pub struct RuntimeStatus {
     pub last_error: Option<String>,
     pub chat_lines: u64,
     pub setup_complete: bool,
+    /// True when EventSub ad-break subscription is armed.
+    #[serde(default)]
+    pub ads_listening: bool,
+    /// Last ads/EventSub setup error (auth, subscribe, etc.).
+    #[serde(default)]
+    pub ads_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]

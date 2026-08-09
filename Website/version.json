@@ -1,5 +1,5 @@
 ﻿{
-  "version": "0.1.7",
+  "version": "0.1.8",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "Automation reliability — cheers fire from chat bits, clearer event Activity logs, Test button, more reliable ad EventSub."
+  "notes": "Ad break automations — EventSub reliability, schedule backup without double-posting, ads listener status on Automations."
 }

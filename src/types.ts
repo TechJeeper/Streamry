@@ -7,6 +7,10 @@ export type RuntimeStatus = {
   lastError?: string | null;
   chatLines: number;
   setupComplete: boolean;
+  /** EventSub ad-break subscription is armed. */
+  adsListening?: boolean;
+  /** Last ads/EventSub setup error. */
+  adsError?: string | null;
 };
 
 export type AppSettings = {
