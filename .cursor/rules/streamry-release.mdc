@@ -1,0 +1,22 @@
+---
+description: How to ship Streamry releases and announce them on Discord
+alwaysApply: true
+---
+
+# Streamry releases
+
+When the user asks to build / ship / release a new version:
+
+1. Bump `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Website/version.json`, `Website/downloads.html`, `Website/index.html`, and `README.md` together.
+2. Put a short summary in `Website/version.json` → `notes`, and a bullet list in optional `changelog` (strings; shown on Discord).
+3. Build Windows NSIS + macOS universal DMG; copy installers into `Website/downloads/` with the versioned names.
+4. Commit, tag `vX.Y.Z`, and push `main` + the tag.
+
+## Discord announce (required)
+
+Pushing `Website/version.json` to `main` triggers `.github/workflows/announce-release.yml`, which posts to the release channel via secret `DISCORD_RELEASE_WEBHOOK_URL`.
+
+- Always update `notes` / `changelog` before that push so Discord gets a real changelog.
+- Local dry-run: `node scripts/announce-discord-release.mjs --dry-run`
+- Local post (needs env): `$env:DISCORD_RELEASE_WEBHOOK_URL="…"; npm run announce:discord`
+- Never commit the webhook URL or token into the repo.

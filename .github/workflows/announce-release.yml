@@ -1,0 +1,29 @@
+name: Announce release to Discord
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "Website/version.json"
+  workflow_dispatch:
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Post changelog to Discord
+        env:
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_RELEASE_WEBHOOK_URL" ]; then
+            echo "Secret DISCORD_RELEASE_WEBHOOK_URL is not set — skipping announce."
+            echo "Add it under Settings → Secrets and variables → Actions."
+            exit 0
+          fi
+          node scripts/announce-discord-release.mjs

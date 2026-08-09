@@ -11,6 +11,12 @@ Static marketing site for [Streamry](../README.md), deployed with **GitHub Pages
 
 When you ship a new build, bump `version` in `version.json` (and the installers under `downloads/`) to match `package.json` / `src-tauri/tauri.conf.json`.
 
+`version.json` fields:
+- `notes` — short release summary (also used by the in-app updater)
+- `changelog` (optional) — string array of bullets posted to the Discord release channel
+
+Pushing `version.json` to `main` runs `.github/workflows/announce-release.yml` (secret: `DISCORD_RELEASE_WEBHOOK_URL`). Local: `npm run announce:discord`.
+
 ## Local preview
 
 ```bash

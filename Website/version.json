@@ -1,5 +1,11 @@
 ﻿{
   "version": "0.1.8",
   "downloadUrl": "https://techjeeper.github.io/Streamry/downloads.html",
-  "notes": "Ad break automations — EventSub reliability, schedule backup without double-posting, ads listener status on Automations."
+  "notes": "Ad break automations — EventSub reliability, schedule backup without double-posting, ads listener status on Automations.",
+  "changelog": [
+    "Stronger Twitch EventSub handling (reconnect, keepalive, 409 recovery)",
+    "Ad schedule backup only when EventSub isn't armed (no duplicate chat posts)",
+    "Automations page shows whether the ad break listener is armed",
+    "Clearer Activity logs for ad start/end"
+  ]
 }
